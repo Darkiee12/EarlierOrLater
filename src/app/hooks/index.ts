@@ -1,4 +1,4 @@
-import Option from "@/common/option";
+import Option from "@/rust_prelude/option/Option";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios, { AxiosError, AxiosRequestConfig } from "axios";
 import { useEffect } from "react";

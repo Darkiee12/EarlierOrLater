@@ -1,11 +1,11 @@
-import { NextResponse } from 'next/server';
-import Result from '@/common/result';
-import EventDateImpl from '@/models/eventdate';
-import axios from 'axios';
-import { FullEvent } from '@/models/event';
+import { NextResponse } from "next/server";
+import Result from "@/rust_prelude/result/result";
+import EventDateImpl from "@/models/eventdate";
+import axios from "axios";
+import { FullEvent } from "@/models/event";
 const _apiBaseUrl = process.env.API?.trim();
 if (!_apiBaseUrl) {
-  throw new Error('Missing API base URL configuration');
+  throw new Error("Missing API base URL configuration");
 }
 const apiBaseUrl = new URL(_apiBaseUrl);
 
@@ -19,7 +19,9 @@ export async function POST(request: Request) {
     },
     Err: (error) => {
       console.error(error);
-      return NextResponse.json(Result.Err('Invalid request body'), { status: 400 });
-    }
-  })  
+      return NextResponse.json(Result.Err("Invalid request body"), {
+        status: 400,
+      });
+    },
+  });
 }
