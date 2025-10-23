@@ -1,14 +1,69 @@
-import Option from "@/rust_prelude/option/Option";
+import Option from "@/lib/rust_prelude/option/Option";
 
 /**
  * An `Ordering` is the result of a comparison between two values.
  * 
  * Mimics Rust's `std::cmp::Ordering`
  */
-export enum Ordering {
+enum Ordering {
   Less = -1,
   Equal = 0,
   Greater = 1,
+}
+
+export class OrderingImpl {
+  private constructor(private readonly value: Ordering) {}
+
+  static of(value: Ordering): OrderingImpl {
+    return new OrderingImpl(value);
+  }
+
+  match<T>(handlers: {
+    Less: () => T
+    Equal: () => T
+    Greater: () => T
+  }): T {
+    switch (this.value) {
+      case Ordering.Less:
+        return handlers.Less()
+      case Ordering.Equal:
+        return handlers.Equal()
+      case Ordering.Greater:
+        return handlers.Greater()
+      default: {
+        const _exhaustive: never = this.value
+        throw new Error(`Unhandled Ordering: ${_exhaustive}`)
+      }
+    }
+  }
+
+  isLess(): boolean {
+    return this.value === Ordering.Less
+  }
+
+  isEqual(): boolean{
+    return this.value === Ordering.Equal
+  }
+
+  isGreater(): boolean {
+    return this.value === Ordering.Greater
+  }
+
+  static Less(): OrderingImpl {
+    return OrderingImpl.of(Ordering.Less);
+  }
+
+  static Greater(): OrderingImpl {
+    return OrderingImpl.of(Ordering.Greater);
+  }
+
+  static Equal(): OrderingImpl {
+    return OrderingImpl.of(Ordering.Equal);
+  }
+
+  valueOf(): Ordering {
+    return this.value
+  }
 }
 
 /**
@@ -18,14 +73,14 @@ export enum Ordering {
  * - `Greater` becomes `Less`.
  * - `Equal` becomes `Equal`.
  */
-export function reverseOrdering(ordering: Ordering): Ordering {
-  switch (ordering) {
+export function reverseOrdering(ordering: OrderingImpl): OrderingImpl {
+  switch (ordering.valueOf()) {
     case Ordering.Less:
-      return Ordering.Greater;
+      return OrderingImpl.of(Ordering.Greater);
     case Ordering.Greater:
-      return Ordering.Less;
+      return OrderingImpl.of(Ordering.Less);
     case Ordering.Equal:
-      return Ordering.Equal;
+      return OrderingImpl.of(Ordering.Equal);
   }
 }
 
@@ -34,8 +89,8 @@ export function reverseOrdering(ordering: Ordering): Ordering {
  * 
  * Returns `first` when it's not `Equal`. Otherwise returns `second`.
  */
-export function thenOrdering(first: Ordering, second: Ordering): Ordering {
-  return first !== Ordering.Equal ? first : second;
+export function thenOrdering(first: OrderingImpl, second: OrderingImpl): OrderingImpl {
+  return !first.isEqual() ? first : second;
 }
 
 /**
@@ -43,41 +98,10 @@ export function thenOrdering(first: Ordering, second: Ordering): Ordering {
  * 
  * Returns `first` when it's not `Equal`. Otherwise returns the result of `f`.
  */
-export function thenWithOrdering(first: Ordering, f: () => Ordering): Ordering {
-  return first !== Ordering.Equal ? first : f();
+export function thenWithOrdering(first: OrderingImpl, f: () => OrderingImpl): OrderingImpl {
+  return !first.isEqual() ? first : f();
 }
 
-/**
- * Pattern matches on an `Ordering` value.
- * 
- * Executes the corresponding function based on the ordering value.
- * 
- * @example
- * ```typescript
- * const result = matchOrdering(myOrdering, {
- *   Less: () => "smaller",
- *   Equal: () => "same",
- *   Greater: () => "bigger"
- * });
- * ```
- */
-export function matchOrdering<T>(
-  ordering: Ordering,
-  cases: {
-    Less: () => T;
-    Equal: () => T;
-    Greater: () => T;
-  }
-): T {
-  switch (ordering) {
-    case Ordering.Less:
-      return cases.Less();
-    case Ordering.Equal:
-      return cases.Equal();
-    case Ordering.Greater:
-      return cases.Greater();
-  }
-}
 
 /**
  * Trait for equality comparisons which are partial equivalence relations.
@@ -126,7 +150,7 @@ export interface PartialOrd<T = unknown> extends PartialEq<T> {
   /**
    * This method returns an ordering between `self` and `other` values if one exists.
    */
-  partialCmp(other: T): Option<Ordering>;
+  partialCmp(other: T): Option<OrderingImpl>;
 
   /**
    * This method tests less than (for `self` and `other`) and is used by the `<` operator.
@@ -166,7 +190,7 @@ export interface Ord<T = unknown> extends Eq<T>, PartialOrd<T> {
    * By convention, `self.cmp(other)` returns the ordering matching the expression
    * `self <operator> other` if true.
    */
-  cmp(other: T): Ordering;
+  cmp(other: T): OrderingImpl;
 
   /**
    * Compares and returns the maximum of two values.
@@ -199,7 +223,7 @@ export interface Ord<T = unknown> extends Eq<T>, PartialOrd<T> {
  * Returns the second argument if the comparison determines them to be equal.
  */
 export function max<T>(v1: T & Ord<T>, v2: T & Ord<T>): T {
-  return v1.cmp(v2) === Ordering.Greater ? v1 : v2;
+  return v1.cmp(v2).isGreater() ? v1 : v2;
 }
 
 /**
@@ -208,21 +232,21 @@ export function max<T>(v1: T & Ord<T>, v2: T & Ord<T>): T {
  * Returns the first argument if the comparison determines them to be equal.
  */
 export function min<T>(v1: T & Ord<T>, v2: T & Ord<T>): T {
-  return v1.cmp(v2) === Ordering.Less ? v1 : v2;
+  return v1.cmp(v2).isLess() ? v1 : v2;
 }
 
 /**
  * Compares and returns the maximum of two values with respect to the specified comparison function.
  */
-export function maxBy<T>(v1: T, v2: T, compare: (a: T, b: T) => Ordering): T {
-  return compare(v1, v2) === Ordering.Greater ? v1 : v2;
+export function maxBy<T>(v1: T, v2: T, compare: (a: T, b: T) => OrderingImpl): T {
+  return compare(v1, v2).isGreater() ? v1 : v2;
 }
 
 /**
  * Compares and returns the minimum of two values with respect to the specified comparison function.
  */
-export function minBy<T>(v1: T, v2: T, compare: (a: T, b: T) => Ordering): T {
-  return compare(v1, v2) === Ordering.Less ? v1 : v2;
+export function minBy<T>(v1: T, v2: T, compare: (a: T, b: T) => OrderingImpl): T {
+  return compare(v1, v2).isLess() ? v1 : v2;
 }
 
 /**
@@ -233,7 +257,7 @@ export function maxByKey<T, K>(
   v2: T,
   f: (v: T) => K & Ord<K>
 ): T {
-  return f(v1).cmp(f(v2)) === Ordering.Greater ? v1 : v2;
+  return f(v1).cmp(f(v2)).isGreater() ? v1 : v2;
 }
 
 /**
@@ -244,7 +268,7 @@ export function minByKey<T, K>(
   v2: T,
   f: (v: T) => K & Ord<K>
 ): T {
-  return f(v1).cmp(f(v2)) === Ordering.Less ? v1 : v2;
+  return f(v1).cmp(f(v2)).isLess() ? v1 : v2;
 }
 
 /**
@@ -260,10 +284,10 @@ export function defaultNe<T>(self: T, other: T, eq: (a: T, b: T) => boolean): bo
 export function partialOrdLt<T>(
   self: T,
   other: T,
-  partialCmp: (a: T, b: T) => Option<Ordering>
+  partialCmp: (a: T, b: T) => Option<OrderingImpl>
 ): boolean {
   return partialCmp(self, other)
-    .map((ord) => ord === Ordering.Less)
+    .map((ord) => ord.isLess())
     .unwrapOr(false);
 }
 
@@ -273,10 +297,10 @@ export function partialOrdLt<T>(
 export function partialOrdLe<T>(
   self: T,
   other: T,
-  partialCmp: (a: T, b: T) => Option<Ordering>
+  partialCmp: (a: T, b: T) => Option<OrderingImpl>
 ): boolean {
   return partialCmp(self, other)
-    .map((ord) => ord !== Ordering.Greater)
+    .map((ord) => !ord.isGreater())
     .unwrapOr(false);
 }
 
@@ -286,10 +310,10 @@ export function partialOrdLe<T>(
 export function partialOrdGt<T>(
   self: T,
   other: T,
-  partialCmp: (a: T, b: T) => Option<Ordering>
+  partialCmp: (a: T, b: T) => Option<OrderingImpl>
 ): boolean {
   return partialCmp(self, other)
-    .map((ord) => ord === Ordering.Greater)
+    .map((ord) => ord.isGreater())
     .unwrapOr(false);
 }
 
@@ -299,25 +323,25 @@ export function partialOrdGt<T>(
 export function partialOrdGe<T>(
   self: T,
   other: T,
-  partialCmp: (a: T, b: T) => Option<Ordering>
+  partialCmp: (a: T, b: T) => Option<OrderingImpl>
 ): boolean {
   return partialCmp(self, other)
-    .map((ord) => ord !== Ordering.Less)
+    .map((ord) => !ord.isLess())
     .unwrapOr(false);
 }
 
 /**
  * Helper function to create default `max` implementation for `Ord`.
  */
-export function ordMax<T>(self: T, other: T, cmp: (a: T, b: T) => Ordering): T {
-  return cmp(self, other) === Ordering.Greater ? self : other;
+export function ordMax<T>(self: T, other: T, cmp: (a: T, b: T) => OrderingImpl): T {
+  return cmp(self, other).isGreater() ? self : other;
 }
 
 /**
  * Helper function to create default `min` implementation for `Ord`.
  */
-export function ordMin<T>(self: T, other: T, cmp: (a: T, b: T) => Ordering): T {
-  return cmp(self, other) === Ordering.Less ? self : other;
+export function ordMin<T>(self: T, other: T, cmp: (a: T, b: T) => OrderingImpl): T {
+  return cmp(self, other).isLess() ? self : other;
 }
 
 /**
@@ -333,15 +357,16 @@ export function ordClamp<T>(
   self: T,
   min: T,
   max: T,
-  cmp: (a: T, b: T) => Ordering
+  cmp: (a: T, b: T) => OrderingImpl
 ): T {
-  if (cmp(min, max) === Ordering.Greater) {
+  // if min > max -> error
+  if (cmp(min, max).isGreater()) {
     throw new Error("min cannot be greater than max in clamp");
   }
-  if (cmp(self, min) === Ordering.Less) {
+  if (cmp(self, min).isLess()) {
     return min;
   }
-  if (cmp(self, max) === Ordering.Greater) {
+  if (cmp(self, max).isGreater()) {
     return max;
   }
   return self;
@@ -420,7 +445,7 @@ export function ImplPartialOrdLt<T>(
 ): PropertyDescriptor {
   descriptor.value = function (this: PartialOrd<T>, other: T): boolean {
     return this.partialCmp(other)
-      .map((ord) => ord === Ordering.Less)
+      .map((ord) => ord.isLess())
       .unwrapOr(false);
   };
   return descriptor;
@@ -433,7 +458,7 @@ export function ImplPartialOrdLe<T>(
 ): PropertyDescriptor {
   descriptor.value = function (this: PartialOrd<T>, other: T): boolean {
     return this.partialCmp(other)
-      .map((ord) => ord !== Ordering.Greater)
+      .map((ord) => !ord.isGreater())
       .unwrapOr(false);
   };
   return descriptor;
@@ -446,7 +471,7 @@ export function ImplPartialOrdGt<T>(
 ): PropertyDescriptor {
   descriptor.value = function (this: PartialOrd<T>, other: T): boolean {
     return this.partialCmp(other)
-      .map((ord) => ord === Ordering.Greater)
+      .map((ord) => ord.isGreater())
       .unwrapOr(false);
   };
   return descriptor;
@@ -459,7 +484,7 @@ export function ImplPartialOrdGe<T>(
 ): PropertyDescriptor {
   descriptor.value = function (this: PartialOrd<T>, other: T): boolean {
     return this.partialCmp(other)
-      .map((ord) => ord !== Ordering.Less)
+      .map((ord) => !ord.isLess())
       .unwrapOr(false);
   };
   return descriptor;
@@ -499,7 +524,7 @@ export function ImplPartialCmp<T>(
   propertyKey: string,
   descriptor: PropertyDescriptor
 ): PropertyDescriptor {
-  descriptor.value = function (this: Ord<T>, other: T): Option<Ordering> {
+  descriptor.value = function (this: Ord<T>, other: T): Option<OrderingImpl> {
     return Option.Some(this.cmp(other));
   };
   return descriptor;
@@ -514,7 +539,7 @@ export function ImplOrdMax<T>(
   descriptor: PropertyDescriptor
 ): PropertyDescriptor {
   descriptor.value = function (this: Ord<T>, other: T): T {
-    return this.cmp(other) === Ordering.Greater ? (this as unknown as T) : other;
+    return this.cmp(other).isGreater() ? (this as unknown as T) : other;
   };
   return descriptor;
 }
@@ -528,7 +553,7 @@ export function ImplOrdMin<T>(
   descriptor: PropertyDescriptor
 ): PropertyDescriptor {
   descriptor.value = function (this: Ord<T>, other: T): T {
-    return this.cmp(other) === Ordering.Less ? (this as unknown as T) : other;
+    return this.cmp(other).isLess() ? (this as unknown as T) : other;
   };
   return descriptor;
 }
@@ -543,13 +568,13 @@ export function ImplOrdClamp<T>(
 ): PropertyDescriptor {
   descriptor.value = function (this: Ord<T>, min: T, max: T): T {
     const self = this as unknown as T;
-    if (this.cmp(min) === Ordering.Greater && this.cmp(max) === Ordering.Greater) {
+    if (this.cmp(min).isGreater() && this.cmp(max).isGreater()) {
       throw new Error("min cannot be greater than max in clamp");
     }
-    if (this.cmp(min) === Ordering.Less) {
+    if (this.cmp(min).isLess()) {
       return min;
     }
-    if (this.cmp(max) === Ordering.Greater) {
+    if (this.cmp(max).isGreater()) {
       return max;
     }
     return self;
@@ -596,7 +621,7 @@ export function DeriveOrd<T extends new (...args: any[]) => Ord<any>>(
 
   // Implement partialCmp from cmp
   if (!proto.partialCmp) {
-    proto.partialCmp = function (other: unknown): Option<Ordering> {
+    proto.partialCmp = function (other: unknown): Option<OrderingImpl> {
       return Option.Some(this.cmp(other));
     };
   }
@@ -612,7 +637,7 @@ export function DeriveOrd<T extends new (...args: any[]) => Ord<any>>(
   if (!proto.lt) {
     proto.lt = function (other: unknown): boolean {
       return this.partialCmp(other)
-        .map((ord: Ordering) => ord === Ordering.Less)
+        .map((ord: OrderingImpl) => ord.isLess())
         .unwrapOr(false);
     };
   }
@@ -620,7 +645,7 @@ export function DeriveOrd<T extends new (...args: any[]) => Ord<any>>(
   if (!proto.le) {
     proto.le = function (other: unknown): boolean {
       return this.partialCmp(other)
-        .map((ord: Ordering) => ord !== Ordering.Greater)
+        .map((ord: OrderingImpl) => !ord.isGreater())
         .unwrapOr(false);
     };
   }
@@ -628,7 +653,7 @@ export function DeriveOrd<T extends new (...args: any[]) => Ord<any>>(
   if (!proto.gt) {
     proto.gt = function (other: unknown): boolean {
       return this.partialCmp(other)
-        .map((ord: Ordering) => ord === Ordering.Greater)
+        .map((ord: OrderingImpl) => ord.isGreater())
         .unwrapOr(false);
     };
   }
@@ -636,7 +661,7 @@ export function DeriveOrd<T extends new (...args: any[]) => Ord<any>>(
   if (!proto.ge) {
     proto.ge = function (other: unknown): boolean {
       return this.partialCmp(other)
-        .map((ord: Ordering) => ord !== Ordering.Less)
+        .map((ord: OrderingImpl) => !ord.isLess())
         .unwrapOr(false);
     };
   }
@@ -644,13 +669,13 @@ export function DeriveOrd<T extends new (...args: any[]) => Ord<any>>(
   // Implement max, min, clamp from cmp
   if (!proto.max) {
     proto.max = function (other: unknown): unknown {
-      return this.cmp(other) === Ordering.Greater ? this : other;
+      return this.cmp(other).isGreater() ? this : other;
     };
   }
 
   if (!proto.min) {
     proto.min = function (other: unknown): unknown {
-      return this.cmp(other) === Ordering.Less ? this : other;
+      return this.cmp(other).isLess() ? this : other;
     };
   }
 
@@ -712,7 +737,7 @@ export function DerivePartialOrd<T extends new (...args: any[]) => PartialOrd<an
   if (!proto.lt) {
     proto.lt = function (other: unknown): boolean {
       return this.partialCmp(other)
-        .map((ord: Ordering) => ord === Ordering.Less)
+        .map((ord: OrderingImpl) => ord.isLess())
         .unwrapOr(false);
     };
   }
@@ -720,7 +745,7 @@ export function DerivePartialOrd<T extends new (...args: any[]) => PartialOrd<an
   if (!proto.le) {
     proto.le = function (other: unknown): boolean {
       return this.partialCmp(other)
-        .map((ord: Ordering) => ord !== Ordering.Greater)
+        .map((ord: OrderingImpl) => !ord.isGreater())
         .unwrapOr(false);
     };
   }
@@ -728,7 +753,7 @@ export function DerivePartialOrd<T extends new (...args: any[]) => PartialOrd<an
   if (!proto.gt) {
     proto.gt = function (other: unknown): boolean {
       return this.partialCmp(other)
-        .map((ord: Ordering) => ord === Ordering.Greater)
+        .map((ord: OrderingImpl) => ord.isGreater())
         .unwrapOr(false);
     };
   }
@@ -736,7 +761,7 @@ export function DerivePartialOrd<T extends new (...args: any[]) => PartialOrd<an
   if (!proto.ge) {
     proto.ge = function (other: unknown): boolean {
       return this.partialCmp(other)
-        .map((ord: Ordering) => ord !== Ordering.Less)
+        .map((ord: OrderingImpl) => !ord.isLess())
         .unwrapOr(false);
     };
   }
@@ -776,3 +801,4 @@ export function DerivePartialEq<T extends new (...args: any[]) => PartialEq<any>
 
   return constructor;
 }
+
