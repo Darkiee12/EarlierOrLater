@@ -8,6 +8,7 @@ interface GameContextType {
   points: number;
   revealedYear: boolean;
   pairs: Array<{ firstEvent: EventImpl; secondEvent: EventImpl; expectedResult: PositionImpl }>;
+  total: number;
   currentPair: { firstEvent: EventImpl; secondEvent: EventImpl; expectedResult: PositionImpl };
   ongoing: boolean;
   date: number;
@@ -79,6 +80,7 @@ export const GameProvider = ({ events, children }: GameProviderProps) => {
     pairs,
     currentPair,
     ongoing,
+    total: pairs.length,
     date: events.date,
     month: events.month,
     setRevealedYear,

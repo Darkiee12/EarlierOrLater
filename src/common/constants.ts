@@ -1,0 +1,1 @@
+export const PHASE_DURATION_SECONDS: number = 1.5;
