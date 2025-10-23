@@ -1,6 +1,6 @@
 "use client";
 import EventImpl, { FullEventImpl } from "@/models/event";
-import { memo, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { GameProvider, useGameContext } from "@/contexts/GameContext";
 import { PositionImpl } from "@/models/pairevent";
 import { FaLongArrowAltRight } from "react-icons/fa";
@@ -65,13 +65,11 @@ const GameCard: React.FC<{
 }> = ({ data, eventOrder }) => {
   const { revealedYear, handleCardClick, month, date, currentPair } =
     useGameContext();
-  return (
-    <GameCardButton />
-  );
+  return <GameCardButton />;
 
   function GameCardButton() {
     const [showBorderColor, setShowBorderColor] = useState(false);
-
+    const formatYear = useCallback((y: number) => (y > 0 ? `${y}` : `${Math.abs(y)} BC`), []);
     useEffect(() => {
       let t: ReturnType<typeof setTimeout> | undefined;
       if (revealedYear) {
@@ -102,7 +100,13 @@ const GameCard: React.FC<{
             <div className="w-full flex flex-col items-center justify-center font-bold">
               <span>{`${month} ${date},`}</span>
               <span className="text-2xl">
-                <CountUp start={0} end={data.year.get()} duration={PHASE_DURATION_SECONDS} separator="">
+                <CountUp
+                  start={0}
+                  end={data.year.get()}
+                  duration={PHASE_DURATION_SECONDS}
+                  separator=""
+                  formattingFn={formatYear}
+                >
                   {({ countUpRef }) => (
                     <div>
                       <span ref={countUpRef} />
