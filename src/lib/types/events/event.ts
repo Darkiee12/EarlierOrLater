@@ -1,15 +1,14 @@
 import Result from "@/lib/rust_prelude/result/result";
-import { YearImpl } from "@/lib/types/common/year"
+import { YearImpl } from "@/lib/types/common/year";
 import z from "zod";
-import _ from "lodash";
+
 import { Ord, OrderingImpl } from "@/lib/rust_prelude/cmp/ord";
 import Option from "@/lib/rust_prelude/option/Option";
 import { sortByKey } from "@/lib/rust_prelude/cmp/sort";
 import { Constants, Json, EventType } from "@/lib/types/common/database.types";
 import EventDateImpl from "./eventdate";
-import { Pair, PositionImpl } from "./pairevent";
-import BaseEvent from ".";
 
+import BaseEvent from ".";
 
 export interface Event {
   text: string;
@@ -222,33 +221,6 @@ export class FullEventImpl {
       data.updated,
       mappedData
     );
-  }
-
-  prepareEvents(count: number = 10): Pair<EventImpl>[] {
-    const slice = this.randomSlice(count * 2, "Events");
-    const pairs: Pair<EventImpl>[] = [];
-    for (let i = 0; i < slice.length; i += 2) {
-      if (i + 1 < slice.length) {
-        const firstEvent = slice[i];
-        const secondEvent = slice[i + 1];
-        pairs.push({
-          firstEvent: firstEvent,
-          secondEvent: secondEvent,
-          expectedResult: firstEvent.year.eq(secondEvent.year)
-            ? PositionImpl.both()
-            : firstEvent.year.get() < secondEvent.year.get()
-            ? PositionImpl.first()
-            : PositionImpl.second(),
-        });
-      }
-    }
-    return pairs;
-  }
-
-  private randomSlice(n: number, key: keyof FullEventImpl["data"]) {
-    if (n >= this.data[key].length) return this.data[key];
-    const start = _.random(0, this.data[key].length - n);
-    return this.data[key].slice(start, start + n);
   }
 }
 

@@ -30,6 +30,7 @@ interface GameContextType {
   nextGameReady: boolean;
   smallerYear: Option<number>;
   selectedId: Option<string>;
+  eventType: Option<EventType>;
   selectEventType: (eventType: EventType) => void;
   handleCardClick: (selectedId: string) => void;
   nextPair: () => void;
@@ -49,9 +50,9 @@ interface GameProviderProps {
   children: ReactNode;
 }
 
-const today = EventDateImpl.today();
-
 export const GameProvider = ({ children }: GameProviderProps) => {
+  const [today] = useState(() => EventDateImpl.today());
+
   const [eventType, setEventType] = useState<Option<EventType>>(Option.None());
   const [partialEvents, setPartialEvents] = useState<Pair<EventPayload>[]>([]);
   const [detailedEvents, setDetailedEvents] = useState<Map<string, EventData>>(
@@ -65,6 +66,7 @@ export const GameProvider = ({ children }: GameProviderProps) => {
   const scoredRoundsRef = useRef<Set<number>>(new Set());
   const [revealReady, setRevealReady] = useState<boolean>(false);
   const revealTimerRef = useRef<number | null>(null);
+  const pointsTimerRef = useRef<number | null>(null);
 
   const totalRound = useMemo(() => partialEvents.length, [partialEvents]);
 
@@ -94,6 +96,23 @@ export const GameProvider = ({ children }: GameProviderProps) => {
     requestedEventIds,
     hasSelection && requestedEventIds.length > 0
   );
+
+  useEffect(() => {
+    current.ifSome((idx) => {
+      if (gameStatus === "ongoing" && idx >= totalRound) {
+        setGameStatus("finished");
+        if (revealTimerRef.current !== null) {
+          clearTimeout(revealTimerRef.current);
+          revealTimerRef.current = null;
+        }
+        if (pointsTimerRef.current !== null) {
+          clearTimeout(pointsTimerRef.current);
+          pointsTimerRef.current = null;
+        }
+      }
+    });
+  }, [current, gameStatus, totalRound]);
+
   useEffect(() => {
     eventType.ifSome((et) => {
       getEvents({
@@ -102,7 +121,7 @@ export const GameProvider = ({ children }: GameProviderProps) => {
         eventType: et,
       });
     });
-  }, [eventType, getEvents]);
+  }, [eventType, getEvents, today.month, today.date]);
 
   useEffect(() => {
     if (events) {
@@ -113,6 +132,10 @@ export const GameProvider = ({ children }: GameProviderProps) => {
       if (revealTimerRef.current !== null) {
         clearTimeout(revealTimerRef.current);
         revealTimerRef.current = null;
+      }
+      if (pointsTimerRef.current !== null) {
+        clearTimeout(pointsTimerRef.current);
+        pointsTimerRef.current = null;
       }
     }
   }, [events]);
@@ -149,9 +172,17 @@ export const GameProvider = ({ children }: GameProviderProps) => {
   }, [currentDetailPair]);
 
   useEffect(() => {
+    if (gameStatus !== "ongoing") {
+      return;
+    }
+
     if (revealTimerRef.current !== null) {
       clearTimeout(revealTimerRef.current);
       revealTimerRef.current = null;
+    }
+    if (pointsTimerRef.current !== null) {
+      clearTimeout(pointsTimerRef.current);
+      pointsTimerRef.current = null;
     }
     setRevealReady(false);
 
@@ -167,10 +198,32 @@ export const GameProvider = ({ children }: GameProviderProps) => {
     })();
 
     if (hasSel && hasDetails) {
+      const delay = PHASE_DURATION_SECONDS * 1000;
+
       revealTimerRef.current = window.setTimeout(() => {
         setRevealReady(true);
         revealTimerRef.current = null;
-      }, PHASE_DURATION_SECONDS * 1000);
+      }, delay);
+
+      pointsTimerRef.current = window.setTimeout(() => {
+        selectedId.ifSome((sId) => {
+          current.ifSome((idx) => {
+            if (!scoredRoundsRef.current.has(idx)) {
+              currentDetailPair.ifSome(([f, s]) => {
+                const isCorrect =
+                  (f.year < s.year && f.id === sId) ||
+                  (s.year < f.year && s.id === sId) ||
+                  f.year === s.year;
+                if (isCorrect) {
+                  setPoints((prevPoints) => prevPoints + 1);
+                }
+                scoredRoundsRef.current.add(idx);
+              });
+            }
+          });
+        });
+        pointsTimerRef.current = null;
+      }, delay);
     }
 
     return () => {
@@ -178,56 +231,47 @@ export const GameProvider = ({ children }: GameProviderProps) => {
         clearTimeout(revealTimerRef.current);
         revealTimerRef.current = null;
       }
+      if (pointsTimerRef.current !== null) {
+        clearTimeout(pointsTimerRef.current);
+        pointsTimerRef.current = null;
+      }
     };
-  }, [selectedId, currentDetailPair]);
-
-  useEffect(() => {
-    if (!currentDetailPair) return;
-    selectedId.ifSome((sId) => {
-      current.ifSome((idx) => {
-        if (!scoredRoundsRef.current.has(idx)) {
-          currentDetailPair.ifSome(([f, s]) => {
-            const isCorrect =
-              (f.year < s.year && f.id === sId) ||
-              (s.year < f.year && s.id === sId) ||
-              f.year === s.year;
-            if (isCorrect) setTimeout(() => {
-              setPoints((prevPoints) => prevPoints + 1);
-            }, PHASE_DURATION_SECONDS * 1000)
-            scoredRoundsRef.current.add(idx);
-          });
-        }
-      });
-    });
-  }, [currentDetailPair, selectedId, current]);
+  }, [selectedId, currentDetailPair, current, gameStatus]);
 
   useEffect(() => {
     eventType.ifSome(() => setGameStatus("loading"));
   }, [eventType]);
-
-  useEffect(() => {
-    current
-      .map((idx) => gameStatus === "ongoing" && idx >= totalRound)
-      .ifSome((finished) => {
-        if (finished) {
-          setGameStatus("finished");
-        }
-      });
-  }, [current, gameStatus, totalRound]);
 
   const handleCardClick = useCallback((id: string) => {
     setSelectedId((prev) => (prev.isSome() ? prev : Option.Some(id)));
   }, []);
 
   const nextPair = useCallback(() => {
-    setSelectedId(Option.None());
-    setCurrent((prev) => prev.map((c) => c + 1));
-    setRevealReady(false);
     if (revealTimerRef.current !== null) {
       clearTimeout(revealTimerRef.current);
       revealTimerRef.current = null;
     }
-  }, []);
+    if (pointsTimerRef.current !== null) {
+      clearTimeout(pointsTimerRef.current);
+      pointsTimerRef.current = null;
+    }
+
+    setCurrent((prev) => {
+      const nextIdx = prev.map((c) => c + 1);
+      
+      nextIdx.ifSome((idx) => {
+        if (idx >= totalRound) {
+          setRevealReady(false);
+          setSelectedId(Option.None());
+        } else {
+          setRevealReady(false);
+          setSelectedId(Option.None());
+        }
+      });
+      
+      return nextIdx;
+    });
+  }, [totalRound]);
 
   const selectEventType = useCallback((et: EventType) => {
     setEventType(Option.Some(et));
@@ -243,6 +287,7 @@ export const GameProvider = ({ children }: GameProviderProps) => {
       selectedId,
       points,
       gameStatus,
+      eventType,
       selectEventType,
       handleCardClick,
       nextPair,
@@ -256,11 +301,14 @@ export const GameProvider = ({ children }: GameProviderProps) => {
       selectedId,
       points,
       gameStatus,
+      eventType,
       selectEventType,
       handleCardClick,
       nextPair,
       revealReady,
       smallerYear,
+      today.month,
+      today.date,
     ]
   );
 

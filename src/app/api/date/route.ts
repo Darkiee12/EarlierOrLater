@@ -12,6 +12,10 @@ import EventPayloadImpl, { EventPayload } from "@/lib/types/events/event-payload
 import ApiResponse, { ApiResult } from "@/lib/response";
 import { Pair } from "@/lib/types/events/pairevent";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
+
 const apiBaseUrl = Option.into(process.env.API)
   .map((url) => new URL(url.trim()))
   .expect("Missing API base URL configuration");
@@ -36,7 +40,10 @@ export async function POST(request: Request): Promise<NextResponse<ApiResult<Pai
               ).match({
                 Ok: (value) => {
                   const payload = new EventPayloadImpl(value);
-                  return NextResponse.json(ApiResponse.success(payload.pair()), { status: 200 });
+                  return NextResponse.json(ApiResponse.success(payload.pair()), {
+                    status: 200,
+                    headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+                  });
                 },
                 Err: (error) => {
                   console.error(error);
@@ -53,7 +60,7 @@ export async function POST(request: Request): Promise<NextResponse<ApiResult<Pai
             case "ongoing":
               return NextResponse.json(
                 ApiResponse.error("Data fetch in progress. Please retry later.", "fetching_ongoing"),
-                { status: 503 }
+                { status: 503, headers: { "Cache-Control": "no-store" } }
               );
             default:
               return fetchAndStoreThenReturn(eventDate);
@@ -66,7 +73,7 @@ export async function POST(request: Request): Promise<NextResponse<ApiResult<Pai
           console.error(err);
           return NextResponse.json(
             ApiResponse.error("Failed to read metadata", "metadata_error"),
-            { status: 502 }
+            { status: 502, headers: { "Cache-Control": "no-store" } }
           );
         },
       });
@@ -106,12 +113,12 @@ async function fetchAndStoreThenReturn(
           if (err instanceof StaleDataError) {
             return NextResponse.json(
               ApiResponse.error("Data update is in progress. Please retry later.", "fetching_ongoing"),
-              { status: 503 }
+              { status: 503, headers: { "Cache-Control": "no-store" } }
             );
           }
           return NextResponse.json(
             ApiResponse.error("Failed to store data", "data_storage_error"),
-            { status: 502 }
+            { status: 502, headers: { "Cache-Control": "no-store" } }
           );
         },
       });
@@ -120,13 +127,16 @@ async function fetchAndStoreThenReturn(
       return (await EventDatabaseInstance.getCluster(eventDate, "events", COUNT_DEFAULT)).match({
         Ok: (data) => {
           const payload = new EventPayloadImpl(data);
-          return NextResponse.json(ApiResponse.success(payload.pair()), { status: 200 });
+          return NextResponse.json(ApiResponse.success(payload.pair()), {
+            status: 200,
+            headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+          });
         },
         Err: (error) => {
           console.error(error);
           return NextResponse.json(
             ApiResponse.error("Failed to retrieve stored data", "data_retrieval_error"),
-            { status: 502 }
+            { status: 502, headers: { "Cache-Control": "no-store" } }
           );
         },
       });
@@ -135,7 +145,7 @@ async function fetchAndStoreThenReturn(
       console.error(error);
       return NextResponse.json(
         ApiResponse.error("Failed to fetch data from external API", "external_api_error"),
-        { status: 502 }
+        { status: 502, headers: { "Cache-Control": "no-store" } }
       );
     },
   });
