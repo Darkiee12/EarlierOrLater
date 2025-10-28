@@ -22,12 +22,12 @@ export class StaleDataError extends Error {
   }
 }
 
-const SUPABASE_URL = Option.into(process.env.NEXT_PUBLIC_SUPABASE_URL).expect(
+const SUPABASE_URL = Option.into(process.env.SUPABASE_URL).expect(
   "Supabase URL is not defined in .env"
 );
 
 const SUPABASE_SERVICE_ROLE_KEY = Option.into(
-  process.env.NEXT_SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 ).expect("Supabase Service Role Key is not defined in .env");
 
 class EventDatabase {
