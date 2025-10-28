@@ -1,6 +1,13 @@
 "use client";
 
-import { memo, useCallback, useMemo, useState, useEffect } from "react";
+import {
+  memo,
+  useCallback,
+  useMemo,
+  useState,
+  useEffect,
+  useContext,
+} from "react";
 import { GameProvider, useGameContext } from "@/contexts/GameContext";
 import { FaLongArrowAltRight } from "react-icons/fa";
 import CountUp from "react-countup";
@@ -9,6 +16,7 @@ import Option from "@/lib/rust_prelude/option/Option";
 import { EventPayload } from "@/lib/types/events/event-payload";
 import { EventData } from "@/lib/types/common/database.types";
 import { monthNames } from "@/lib/types/events/eventdate";
+import { ThemeContext } from "./ThemeProvider";
 
 const formatYear = (y: number) => (y > 0 ? `${y}` : `${Math.abs(y)} BC`);
 
@@ -90,11 +98,11 @@ const InnerPanel: React.FC = () => {
 
   const firstEvent = useMemo(
     () => currentPair.map((pair) => pair.first),
-    [currentPair]
+    [currentPair],
   );
   const secondEvent = useMemo(
     () => currentPair.map((pair) => pair.second),
-    [currentPair]
+    [currentPair],
   );
 
   const firstDetailed: Option<EventData> = useMemo(() => {
@@ -198,13 +206,15 @@ const GameCard: React.FC<{
     nextGameReady,
     selectedId,
   }) => {
+    const { theme } = useContext(ThemeContext);
+
     const showBorderColor = useMemo(
       () => nextGameReady && detailedEvent.isSome(),
-      [nextGameReady, detailedEvent]
+      [nextGameReady, detailedEvent],
     );
     const isChoiceDisabled = useMemo(
       () => selectedId.isSome() || nextGameReady,
-      [selectedId, nextGameReady]
+      [selectedId, nextGameReady],
     );
     const [shouldAnimate, setShouldAnimate] = useState(false);
 
@@ -234,6 +244,20 @@ const GameCard: React.FC<{
       return key;
     }, [event, selectedId]);
 
+    // Helper to get the default border color based on theme
+    const defaultBorderColor = useMemo(() => {
+      switch (theme) {
+        case "light":
+          return "border-gray-800"; // Dark gray for contrast on light background
+        case "dark":
+          return "border-white"; // White for contrast on dark background
+        case "pink":
+          return "border-pink-400"; // Pink for theme consistency
+        default:
+          return "border-gray-800";
+      }
+    }, [theme]);
+
     return (
       <button
         type="button"
@@ -242,7 +266,7 @@ const GameCard: React.FC<{
             ? smallerYear.equals(detailedEvent.map((de) => de.year))
               ? "border-green-500"
               : "border-red-500"
-            : "border-black dark:border-white"
+            : defaultBorderColor
         } ${
           isChoiceDisabled
             ? "cursor-not-allowed opacity-80"
@@ -285,7 +309,7 @@ const GameCard: React.FC<{
         })}
       </button>
     );
-  }
+  },
 );
 GameCard.displayName = "GameCard";
 
