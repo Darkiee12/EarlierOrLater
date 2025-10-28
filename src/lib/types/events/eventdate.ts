@@ -1,4 +1,4 @@
-import Result from "@/rust_prelude/result/result";
+import Result from "@/lib/rust_prelude/result/result";
 import { z, ZodError } from 'zod';
 
 const eventDateSchema = z.object({
@@ -13,6 +13,36 @@ class InvalidDateError extends Error {
     super(`Invalid date ${date} for month ${month}`);
     this.name = "InvalidDateError";
   }
+}
+
+const months: Record<string, number> = {
+  "January": 1,
+  "February": 2,
+  "March": 3,
+  "April": 4,
+  "May": 5,
+  "June": 6,
+  "July": 7,
+  "August": 8,
+  "September": 9,
+  "October": 10,
+  "November": 11,
+  "December": 12,
+}
+
+export const monthNames: Record<number, string> = {
+  1: "January",
+  2: "February",
+  3: "March",
+  4: "April",
+  5: "May",
+  6: "June",
+  7: "July",
+  8: "August",
+  9: "September",
+  10: "October",
+  11: "November",
+  12: "December",
 }
 
 export default class EventDateImpl implements EventDate {
@@ -63,7 +93,18 @@ export default class EventDateImpl implements EventDate {
         return Result.Err<EventDateImpl, ZodError>(error)
       }
     });
-    
+  }
+
+  static fromMonthDateString(dateString: string): Result<EventDateImpl, Error>{
+    const [monthStr, dateStr] = dateString.split("_");
+    const month = months[monthStr];
+    const date = parseInt(dateStr);
+    return EventDateImpl.fromNumber(month, date);
+  }
+
+  getMonthString(): string{
+    const monthName = Object.keys(months).find(key => months[key] === this.month);
+    return `${monthName}`;
   }
 
   static today(): EventDateImpl {

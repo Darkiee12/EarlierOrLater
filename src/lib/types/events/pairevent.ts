@@ -1,10 +1,8 @@
-import Result from "@/rust_prelude/result/result";
-import EventImpl from "./event";
+import Result from "@/lib/rust_prelude/result/result";
 
-export interface PairEvent{
-  firstEvent: EventImpl;
-  secondEvent: EventImpl;
-  expectedResult: PositionImpl;
+export interface Pair<T>{
+  first: T;
+  second: T;
 }
 
 type Position = "first" | "second" | "both";

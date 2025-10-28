@@ -21,7 +21,7 @@ export default function HeartOverlay() {
       const blur = Math.random() * 4;
       return { id: i, left, duration, delay, size, opacity, drift, rot, blur };
     }),
-  []);
+  [NUM_HEARTS]);
 
   if (!heartsEnabled) return null;
 
@@ -41,7 +41,9 @@ export default function HeartOverlay() {
             animationDelay: `${h.delay}s`,
             opacity: h.opacity,
             filter: `blur(${h.blur}px) drop-shadow(0 0 8px rgba(178,0,255,0.55))`,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             ['--drift' as any]: h.drift,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             ['--rot' as any]: h.rot,
           }}
         >
