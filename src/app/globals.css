@@ -1,69 +1,99 @@
 @import "tailwindcss";
 
-html, body, #__next {
-	height: 100%;
+html,
+body,
+#__next {
+    height: 100%;
 }
 
 body.theme-light {
-	--bg: #ffffff;
-	--text: #000000;
-	background-color: var(--bg);
-	color: var(--text);
+    --bg: #ffffff;
+    --text: #000000;
+    background-color: var(--bg);
+    color: var(--text);
 }
 
 body.theme-dark {
-	--bg: #000000;
-	--text: #ffffff;
-	background-color: var(--bg);
-	color: var(--text);
+    --bg: #000000;
+    --text: #ffffff;
+    background-color: var(--bg);
+    color: var(--text);
 }
 
 body.theme-pink {
-	--bg: #ff007f;
-	--text: #b000ff;
-	background: radial-gradient(1200px 600px at 10% 10%, #ff2fb3 0%, var(--bg) 35%, #ff007f 100%);
-	color: var(--text);
+    --bg: #ff69b4; /* soft hot pink */
+    --text: #2d0033; /* deep purple for strong contrast */
+    background: radial-gradient(
+        1200px 600px at 10% 10%,
+        #ffa3d1 0%,
+        var(--bg) 35%,
+        #ff1493 100%
+    );
+    color: var(--text);
 }
 
-body.theme-light a { color: inherit; }
-body.theme-dark a { color: inherit; }
-body.theme-pink a { color: #d4a0ff; }
+body.theme-light a {
+    color: inherit;
+}
+body.theme-dark a {
+    color: inherit;
+}
+body.theme-pink a {
+    color: #d4a0ff;
+}
 
-.theme-select, select {
-	outline: none;
+.theme-select,
+select {
+    outline: none;
 }
 
 body {
-	transition: background-color 260ms ease, color 260ms ease;
+    transition:
+        background-color 260ms ease,
+        color 260ms ease;
 }
 
-h1, h2, h3, h4, p, a, span, button {
-	transition: color 260ms ease, background-color 200ms ease;
+h1,
+h2,
+h3,
+h4,
+p,
+a,
+span,
+button {
+    transition:
+        color 260ms ease,
+        background-color 200ms ease;
 }
 
 .heart {
-	top: -8%;
-	transform-origin: center;
-	will-change: transform, opacity;
-	animation-name: heart-fall;
-	animation-timing-function: linear;
-	animation-iteration-count: infinite;
+    top: -8%;
+    transform-origin: center;
+    will-change: transform, opacity;
+    animation-name: heart-fall;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
 }
 
 @keyframes heart-fall {
-	0% {
-		transform: translateY(-10vh) translateX(0) rotate(0deg);
-		opacity: 0;
-	}
-	10% { opacity: 1; }
-	100% {
-		transform: translateY(110vh) translateX(var(--drift, 20px)) rotate(var(--rot, 180deg));
-		opacity: 0;
-	}
+    0% {
+        transform: translateY(-10vh) translateX(0) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(110vh) translateX(var(--drift, 20px))
+            rotate(var(--rot, 180deg));
+        opacity: 0;
+    }
 }
 
-.hearts-overlay { pointer-events: none; }
+.hearts-overlay {
+    pointer-events: none;
+}
 
-.heart { pointer-events: none; }
-
-
+.heart {
+    pointer-events: none;
+}

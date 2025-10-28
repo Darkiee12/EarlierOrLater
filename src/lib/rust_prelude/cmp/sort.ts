@@ -1,40 +1,23 @@
-import { Ord, OrderingImpl } from "./ord";
+import { Ord } from "./ord";
 
-
-export function sort<T extends Ord<T>>(arr: T[], inPlace = false): T[] {
-  const out = inPlace ? arr : arr.slice();
-  out.sort((a: T, b: T) => {
-    const ord = a.cmp(b);
-    if (ord.isLess()) return -1;
-    if (ord.isGreater()) return 1;
-    return 0;
+export function sortByKey<T, K extends keyof T>(
+  arr: T[],
+  keyFn: (item: T) => T[K] | { get(): number } | Ord
+): T[] {
+  return [...arr].sort((a, b) => {
+    const aVal = keyFn(a);
+    const bVal = keyFn(b);
+    
+    // If values have 'get' method (like YearImpl)
+    if (aVal && typeof aVal === 'object' && 'get' in aVal && typeof aVal.get === 'function') {
+      const aNum = aVal.get();
+      const bNum = bVal && typeof bVal === 'object' && 'get' in bVal && typeof bVal.get === 'function' 
+        ? bVal.get() 
+        : Number(bVal);
+      return aNum - bNum;
+    }
+    
+    // Otherwise compare as numbers
+    return Number(aVal) - Number(bVal);
   });
-  return out;
-}
-
-export function sortInPlace<T extends Ord<T>>(arr: T[]): T[] {
-  return sort(arr, true);
-}
-
-export function sortBy<T>(arr: T[], compare: (a: T, b: T) => OrderingImpl, inPlace = false): T[] {
-  const out = inPlace ? arr : arr.slice();
-  out.sort((a: T, b: T) => {
-    const ord = compare(a, b);
-    if (ord.isLess()) return -1;
-    if (ord.isGreater()) return 1;
-    return 0;
-  });
-  return out;
-}
-
-export function sortByKey<T, K extends Ord<K>>(arr: T[], key: (v: T) => K, inPlace = false): T[] {
-  return sortBy(arr, (a, b) => key(a).cmp(key(b)), inPlace);
-}
-
-export function min<T extends Ord<T>>(a: T, b: T): T {
-  return a.cmp(b).isLess() ? a : b;
-}
-
-export function max<T extends Ord<T>>(a: T, b: T): T {
-  return a.cmp(b).isGreater() ? a : b;
 }

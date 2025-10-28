@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { validate } from "uuid";
-import EventDatabaseInstance, {
-  NotFoundError,
-} from "@/lib/services/event-service";
+import { NotFoundError } from "@/services/server/event/EventDatabase";
 import _ from "lodash";
 import ApiResponse, { ApiResult } from "@/lib/response";
 import { EventData } from "@/lib/types/common/database.types";
+import EventService from "@/services/server/event/EventService";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -25,7 +24,7 @@ export async function GET(
     );
   }
 
-  const result = await EventDatabaseInstance.getDetailEvents(ids);
+  const result = await EventService.getDetailEvents(ids);
   return result.match({
     Ok: (value) => {
       return NextResponse.json(ApiResponse.success(value), {
