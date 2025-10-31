@@ -1,4 +1,3 @@
-import Option from "@/lib/rust_prelude/option/Option";
 import { EventData, Json } from "@/lib/types/common/database.types";
 import { Pair } from "@/lib/types/common/pair";
 import { PayloadImage, PayloadImageSchema } from "@/lib/types/common";

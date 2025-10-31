@@ -18,7 +18,7 @@ import {
 } from "@/contexts/SingleplayerGameContext";
 import Option from "@/lib/rust_prelude/option/Option";
 import { EventPayload } from "@/lib/types/events/EventPayload";
-import { monthNames } from "@/lib/types/events/EventDate";
+import { monthNames } from "@/lib/types/events/eventdate";
 import { ThemeContext } from "@/components/theme/ThemeProvider";
 import Lobby from "@/components/game/Lobby";
 import { DetailedEventType } from "@/lib/types/events/DetailedEvent";
