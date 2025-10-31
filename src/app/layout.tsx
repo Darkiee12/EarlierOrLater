@@ -1,9 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Providers from "@/app/components/Provider";
-import ThemeProvider from "@/app/components/ThemeProvider";
-import ThemeSwitcher from "@/app/components/ThemeSwitcher";
+import Providers from "@/components/utils/Provider";
+import ThemeProvider from "@/components/theme/ThemeProvider";
+import ThemeSwitcher from "@/components/theme/ThemeSwitcher";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -52,16 +52,16 @@ export const metadata: Metadata = {
     },
   },
   
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-  },
-  
   icons: {
     icon: "/favicon.ico",
     apple: "/apple-touch-icon.png",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({

@@ -14,46 +14,56 @@ export type Database = {
   }
   events: {
     Tables: {
-      detail: {
+      content: {
         Row: {
+          content_urls: Json
+          created_at: string | null
           day: number
           event_type: Database["events"]["Enums"]["event_type"]
-          html: string
+          extract: string
           id: string
-          links: Json
           month: number
+          original_image: Json | null
           text: string
+          thumbnail: Json | null
+          title: string
+          updated_at: string | null
+          wiki_metadata: Json
           year: number
         }
         Insert: {
+          content_urls: Json
+          created_at?: string | null
           day: number
           event_type: Database["events"]["Enums"]["event_type"]
-          html: string
+          extract: string
           id?: string
-          links?: Json
           month: number
+          original_image?: Json | null
           text: string
+          thumbnail?: Json | null
+          title: string
+          updated_at?: string | null
+          wiki_metadata: Json
           year: number
         }
         Update: {
+          content_urls?: Json
+          created_at?: string | null
           day?: number
           event_type?: Database["events"]["Enums"]["event_type"]
-          html?: string
+          extract?: string
           id?: string
-          links?: Json
           month?: number
+          original_image?: Json | null
           text?: string
+          thumbnail?: Json | null
+          title?: string
+          updated_at?: string | null
+          wiki_metadata?: Json
           year?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "detail_month_day_fkey"
-            columns: ["month", "day"]
-            isOneToOne: false
-            referencedRelation: "metadata"
-            referencedColumns: ["month", "day"]
-          },
-        ]
+        Relationships: []
       }
       metadata: {
         Row: {
@@ -90,69 +100,75 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_fullevent_for_date: {
-        Args: { p_day: number; p_month: number }
-        Returns: Json
-      }
-      random_cluster: {
-        Args: { k: number; radius?: number }
-        Returns: {
-          day: number
-          event_type: Database["events"]["Enums"]["event_type"]
-          html: string
-          id: string
-          links: Json
-          month: number
-          text: string
-          year: number
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "detail"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
-      random_cluster_with_filter: {
+      daily_cluster: {
         Args: {
-          p_event_type: Database["events"]["Enums"]["event_type"]
-          p_in_day: number
-          p_in_month: number
-          p_k: number
-          p_radius?: number
-        }
-        Returns: {
-          day: number
-          event_type: Database["events"]["Enums"]["event_type"]
-          html: string
-          id: string
-          links: Json
-          month: number
-          text: string
-          year: number
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "detail"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
-      update_daily_events: {
-        Args: {
-          p_api_update_time: number
-          p_births: Json
           p_day: number
-          p_deaths: Json
-          p_events: Json
+          p_event_type: Database["events"]["Enums"]["event_type"]
           p_month: number
+          p_num_items: number
+          p_range?: number
+          p_seed: number
         }
-        Returns: undefined
+        Returns: {
+          content_urls: Json
+          day: number
+          event_type: Database["events"]["Enums"]["event_type"]
+          extract: string
+          id: string
+          month: number
+          original_image: Json
+          text: string
+          thumbnail: Json
+          title: string
+          wiki_metadata: Json
+          year: number
+        }[]
+      }
+      get_event: {
+        Args: { p_id: string }
+        Returns: {
+          content_urls: Json
+          day: number
+          event_type: Database["events"]["Enums"]["event_type"]
+          extract: string
+          id: string
+          month: number
+          original_image: Json
+          text: string
+          thumbnail: Json
+          title: string
+          wiki_metadata: Json
+          year: number
+        }[]
+      }
+      insert_events: { Args: { p_events: Json }; Returns: undefined }
+      random_cluster: {
+        Args: {
+          p_day: number
+          p_event_type: Database["events"]["Enums"]["event_type"]
+          p_month: number
+          p_num_items: number
+          p_range?: number
+        }
+        Returns: {
+          content_urls: Json
+          day: number
+          event_type: Database["events"]["Enums"]["event_type"]
+          extract: string
+          id: string
+          month: number
+          original_image: Json
+          text: string
+          thumbnail: Json
+          title: string
+          wiki_metadata: Json
+          year: number
+        }[]
       }
     }
     Enums: {
-      event_type: "events" | "births" | "deaths"
-      fetching_type: "not_available" | "ongoing" | "available"
+      event_type: "event" | "birth" | "death"
+      fetching_type: "not_available" | "available" | "ongoing"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -280,11 +296,11 @@ export type CompositeTypes<
 export const Constants = {
   events: {
     Enums: {
-      event_type: ["events", "births", "deaths"],
-      fetching_type: ["not_available", "ongoing", "available"],
+      event_type: ["event", "birth", "death"],
+      fetching_type: ["not_available", "available", "ongoing"],
     },
   },
 } as const
 
 export type EventType = Database["events"]["Enums"]["event_type"];
-export type EventData = Database["events"]["Tables"]["detail"]["Row"];
+export type EventData = Database["events"]["Tables"]["content"]["Row"];

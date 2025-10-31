@@ -1,5 +1,5 @@
 
-import { useGet, usePost } from "@/app/hooks";
+import { useGet, usePost } from "@/hooks/common";
 import { EventData, EventType } from "@/lib/types/common/database.types";
 import { EventPayload } from "@/lib/types/events/event-payload";
 import { Pair } from "@/lib/types/events/pairevent";
