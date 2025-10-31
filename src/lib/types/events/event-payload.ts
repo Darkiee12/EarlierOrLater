@@ -1,16 +1,19 @@
-import { EventData } from "../common/database.types";
+import { EventData } from "@/lib/types/common/database.types";
 import { Pair } from "./pairevent";
 
-export type EventPayload = Omit<EventData, "html" | "links" | "year">;
+export type EventPayload = Omit<EventData, "extract" | "original_image" | "content_urls" | "wiki_metadata" | "created_at" | "updated_at">;
 export default class EventPayloadImpl {
   payload: EventPayload[];
   constructor(data: EventData[]) {
     this.payload = data.map((e) => ({
       id: e.id,
-      month: e.month,
       day: e.day,
+      month: e.month,
+      year: e.year,
       event_type: e.event_type,
+      title: e.title,
       text: e.text,
+      thumbnail: e.thumbnail,
     }));
   }
 

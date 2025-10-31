@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { validate } from "uuid";
-import EventDatabaseInstance, {
-  NotFoundError,
-} from "@/lib/services/event-service";
+import EventServiceInstance from "@/services/server/event/EventService";
+import { NotFoundError } from "@/services/server/event/EventDatabase";
 import _ from "lodash";
 import ApiResponse, { ApiResult } from "@/lib/response";
 import { EventData } from "@/lib/types/common/database.types";
@@ -25,7 +24,7 @@ export async function GET(
     );
   }
 
-  const result = await EventDatabaseInstance.getDetailEvents(ids);
+  const result = await EventServiceInstance.getDetailEvents(ids);
   return result.match({
     Ok: (value) => {
       return NextResponse.json(ApiResponse.success(value), {

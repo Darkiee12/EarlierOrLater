@@ -16,6 +16,8 @@ import {
 } from "react";
 import Option from "@/lib/rust_prelude/option/Option";
 import { PHASE_DURATION_SECONDS } from "@/common/constants";
+import { GameEngine, ScoreCalculator } from "@/lib/game";
+import { useGameTimer } from "@/hooks/game";
 import OptionExt from "@/lib/rust_prelude/option/OptionExt";
 
 // ============================================================================
@@ -24,25 +26,32 @@ import OptionExt from "@/lib/rust_prelude/option/OptionExt";
 
 type GameStatusType = "loading" | "lobby" | "ongoing" | "finished";
 
-interface GameContextType {
+interface SingleplayerGameContextType {
+  // Game Data
   detailedEvents: Map<string, EventData>;
   currentPair: Option<Pair<EventPayload>>;
   currentIndex: Option<number>;
-  points: number;
-  month: number;
-  date: number;
+  eventType: Option<EventType>;
+
+  // Game State
   gameStatus: GameStatusType;
+  points: number;
+  selectedId: Option<string>;
+  earlier: boolean;
   nextGameReady: boolean;
   resultYear: Option<number>;
-  selectedId: Option<string>;
-  eventType: Option<EventType>;
-  earlier: boolean;
+
+  // Game Info
+  month: number;
+  date: number;
+
+  // Actions
   selectEventType: (eventType: EventType) => void;
   handleCardClick: (selectedId: string) => void;
   nextPair: () => void;
 }
 
-interface GameProviderProps {
+interface SingleplayerGameProviderProps {
   children: ReactNode;
 }
 
@@ -50,31 +59,27 @@ interface GameProviderProps {
 // CONTEXT & HOOKS
 // ============================================================================
 
-const GameContext = createContext<GameContextType | undefined>(undefined);
+const SingleplayerGameContext = createContext<
+  SingleplayerGameContextType | undefined
+>(undefined);
 
-export const useGameContext = () => {
-  const context = useContext(GameContext);
+export const useSingleplayerGame = () => {
+  const context = useContext(SingleplayerGameContext);
   if (!context) {
-    throw new Error("useGameContext must be used within GameProvider");
+    throw new Error(
+      "useSingleplayerGame must be used within SingleplayerGameProvider"
+    );
   }
   return context;
-};
-
-// ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
-
-const generateRandomBoolean = (): boolean => {
-  const byte = new Uint8Array(1);
-  crypto.getRandomValues(byte);
-  return (byte[0] & 1) === 1;
 };
 
 // ============================================================================
 // PROVIDER COMPONENT
 // ============================================================================
 
-export const GameProvider = ({ children }: GameProviderProps) => {
+export const SingleplayerGameProvider = ({
+  children,
+}: SingleplayerGameProviderProps) => {
   // ---------------------------------------------------------------------------
   // State - Game Configuration
   // ---------------------------------------------------------------------------
@@ -103,13 +108,75 @@ export const GameProvider = ({ children }: GameProviderProps) => {
   // Refs
   // ---------------------------------------------------------------------------
   const scoredRoundsRef = useRef<Set<number>>(new Set());
-  const revealTimerRef = useRef<number | null>(null);
-  const pointsTimerRef = useRef<number | null>(null);
+  const hasPreFetchedRef = useRef<boolean>(false);
+
+  // ---------------------------------------------------------------------------
+  // Hooks - Client-side
+  // ---------------------------------------------------------------------------
+  const { startTimers, clearTimers } = useGameTimer();
 
   // ---------------------------------------------------------------------------
   // API Hooks
   // ---------------------------------------------------------------------------
   const { mutate: getEvents, data: events } = EventService.usePostEvent(today);
+
+  // ---------------------------------------------------------------------------
+  // Effects - Pre-fetch Optimization
+  // ---------------------------------------------------------------------------
+  
+  // Pre-fetch data when component mounts to optimize load time
+  // This silently triggers API to check/fetch data without affecting game state
+  useEffect(() => {
+    // Guard: Only run once per component lifetime
+    if (hasPreFetchedRef.current) {
+      return;
+    }
+
+    const preFetchData = async () => {
+      try {
+        // Silently call the API for all event types to warm up the cache
+        // This doesn't set any state, just ensures data is in the database
+        const fetchPromises = [
+          fetch("/api/date", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              month: today.month,
+              date: today.date,
+              eventType: "event",
+            }),
+          }),
+          fetch("/api/date", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              month: today.month,
+              date: today.date,
+              eventType: "birth",
+            }),
+          }),
+          fetch("/api/date", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              month: today.month,
+              date: today.date,
+              eventType: "death",
+            }),
+          }),
+        ];
+        
+        await Promise.allSettled(fetchPromises);
+      } catch {
+        console.log("Pre-fetch completed with background fetch");
+      }
+    };
+
+    hasPreFetchedRef.current = true;
+    preFetchData();
+    
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Intentionally empty - only run once on mount with initial values
 
   // ---------------------------------------------------------------------------
   // Computed Values
@@ -124,35 +191,29 @@ export const GameProvider = ({ children }: GameProviderProps) => {
     [current, partialEvents, totalRound]
   );
 
-  const requestedEventIds = useMemo(() => {
-    let ids: string[] = [];
-    currentPair.ifSome((pair) => {
-      ids = [pair.first.id, pair.second.id];
-    });
-    return ids;
-  }, [currentPair]);
+  const requestedEventIds = useMemo(
+    () =>
+      currentPair.map((pair) => [pair.first.id, pair.second.id]).unwrapOr([]),
+    [currentPair]
+  );
 
-  const hasSelection = useMemo(() => {
-    let b = false;
-    selectedId.ifSome(() => {
-      b = true;
-    });
-    return b;
-  }, [selectedId]);
+  const hasSelection = useMemo(() => selectedId.isSome(), [selectedId]);
 
   const currentDetailPair = useMemo<Option<[EventData, EventData]>>(() => {
-    let res: Option<[EventData, EventData]> = Option.None();
-    currentPair.ifSome((pair) => {
-      const f = detailedEvents.get(pair.first.id);
-      const s = detailedEvents.get(pair.second.id);
-      if (f && s) res = Option.Some([f, s]);
-    });
-    return res;
+    return currentPair.andThen((pair) =>
+      OptionExt.match2({
+        opt1: detailedEvents.get(pair.first.id),
+        opt2: detailedEvents.get(pair.second.id),
+        cases: {
+          SomeSome: (f, s) => Option.Some([f, s]),
+          _: () => Option.None(),
+        },
+      })
+    );
   }, [currentPair, detailedEvents]);
-
   const resultYear = useMemo(() => {
     return currentDetailPair.map(([f, s]) =>
-      earlier ? Math.min(f.year, s.year) : Math.max(f.year, s.year)
+      ScoreCalculator.getResultYear(f, s, earlier)
     );
   }, [currentDetailPair, earlier]);
 
@@ -168,10 +229,12 @@ export const GameProvider = ({ children }: GameProviderProps) => {
   // Effects - Game Lifecycle
   // ---------------------------------------------------------------------------
 
+  // Set game status to loading when event type is selected
   useEffect(() => {
     eventType.ifSome(() => setGameStatus("loading"));
   }, [eventType]);
 
+  // Fetch events when event type is selected
   useEffect(() => {
     eventType.ifSome((et) => {
       getEvents({
@@ -182,44 +245,37 @@ export const GameProvider = ({ children }: GameProviderProps) => {
     });
   }, [eventType, getEvents, today.month, today.date]);
 
+  // Initialize game when events are loaded
   useEffect(() => {
     if (events) {
       setPartialEvents(events);
       setGameStatus("ongoing");
       scoredRoundsRef.current = new Set();
       setRevealReady(false);
-      setEarlier(generateRandomBoolean());
-      if (revealTimerRef.current !== null) {
-        clearTimeout(revealTimerRef.current);
-        revealTimerRef.current = null;
-      }
-      if (pointsTimerRef.current !== null) {
-        clearTimeout(pointsTimerRef.current);
-        pointsTimerRef.current = null;
-      }
+      setEarlier(GameEngine.generateRandomBoolean());
+      clearTimers();
     }
-  }, [events]);
+  }, [events, clearTimers]);
 
+  // Check if game is finished
   useEffect(() => {
     current.ifSome((idx) => {
-      if (gameStatus === "ongoing" && idx >= totalRound) {
+      if (
+        gameStatus === "ongoing" &&
+        GameEngine.isGameFinished(idx, totalRound)
+      ) {
         setGameStatus("finished");
-        if (revealTimerRef.current !== null) {
-          clearTimeout(revealTimerRef.current);
-          revealTimerRef.current = null;
-        }
-        if (pointsTimerRef.current !== null) {
-          clearTimeout(pointsTimerRef.current);
-          pointsTimerRef.current = null;
-        }
+        ScoreCalculator.saveBestScore(points);
+        clearTimers();
       }
     });
-  }, [current, gameStatus, totalRound]);
+  }, [current, gameStatus, totalRound, clearTimers, points]);
 
   // ---------------------------------------------------------------------------
   // Effects - Data Management
   // ---------------------------------------------------------------------------
 
+  // Update detailed events when fetched
   useEffect(() => {
     if (!fetchedDetailEvents) return;
 
@@ -246,79 +302,56 @@ export const GameProvider = ({ children }: GameProviderProps) => {
       return;
     }
 
-    if (revealTimerRef.current !== null) {
-      clearTimeout(revealTimerRef.current);
-      revealTimerRef.current = null;
-    }
-    if (pointsTimerRef.current !== null) {
-      clearTimeout(pointsTimerRef.current);
-      pointsTimerRef.current = null;
-    }
+    clearTimers();
     setRevealReady(false);
 
-    let hasSel = false;
-    selectedId.ifSome(() => (hasSel = true));
-
-    const hasDetails = (() => {
-      let present = false;
-      currentDetailPair.ifSome(() => {
-        present = true;
-      });
-      return present;
-    })();
-
-    if (hasSel && hasDetails) {
+    if (selectedId.isSome() && currentDetailPair.isSome()) {
       const delay = PHASE_DURATION_SECONDS * 1000;
 
-      revealTimerRef.current = window.setTimeout(() => {
+      const handleReveal = () => {
         setRevealReady(true);
-        revealTimerRef.current = null;
-      }, delay);
+      };
 
-      pointsTimerRef.current = window.setTimeout(() => {
+      const handleScore = () => {
         OptionExt.ifSome2({
           opt1: selectedId,
           opt2: current,
-          handlers(selectedId, current) {
-            if (!scoredRoundsRef.current.has(current)) {
+          handlers: (selectedId, current) => {
+            if (GameEngine.canScoreRound(current, scoredRoundsRef.current)) {
               currentDetailPair.ifSome(([f, s]) => {
-                const isTie = f.year === s.year;
-                const pickEarlier = (a: EventData, b: EventData) =>
-                  a.year < b.year ? a : b;
-                const pickLater = (a: EventData, b: EventData) =>
-                  a.year > b.year ? a : b;
-
-                const winner = isTie
-                  ? null
-                  : earlier
-                  ? pickEarlier(f, s)
-                  : pickLater(f, s);
-                const isCorrect = isTie || (winner && winner.id === selectedId);
+                const isCorrect = ScoreCalculator.isCorrectSelection(
+                  f,
+                  s,
+                  selectedId,
+                  earlier
+                );
 
                 if (isCorrect) {
                   setPoints((prevPoints) => prevPoints + 1);
                 }
-                scoredRoundsRef.current.add(current);
+
+                GameEngine.markRoundAsScored(current, scoredRoundsRef.current);
               });
             }
           },
         });
+      };
 
-        pointsTimerRef.current = null;
-      }, delay);
+      startTimers(delay, handleReveal, handleScore);
     }
 
     return () => {
-      if (revealTimerRef.current !== null) {
-        clearTimeout(revealTimerRef.current);
-        revealTimerRef.current = null;
-      }
-      if (pointsTimerRef.current !== null) {
-        clearTimeout(pointsTimerRef.current);
-        pointsTimerRef.current = null;
-      }
+      clearTimers();
     };
-  }, [selectedId, currentDetailPair, current, gameStatus, earlier]);
+  }, [
+    selectedId,
+    currentDetailPair,
+    current,
+    gameStatus,
+    earlier,
+    startTimers,
+    clearTimers,
+  ]);
 
   // ---------------------------------------------------------------------------
   // Callbacks - User Actions
@@ -333,27 +366,22 @@ export const GameProvider = ({ children }: GameProviderProps) => {
   }, []);
 
   const nextPair = useCallback(() => {
-    if (revealTimerRef.current !== null) {
-      clearTimeout(revealTimerRef.current);
-      revealTimerRef.current = null;
-    }
-    if (pointsTimerRef.current !== null) {
-      clearTimeout(pointsTimerRef.current);
-      pointsTimerRef.current = null;
-    }
+    clearTimers();
 
+    // Reset UI state
     setRevealReady(false);
     setSelectedId(Option.None());
 
+    // Move to next round and randomize
     setCurrent((prev) => prev.map((c) => c + 1));
-    setEarlier(generateRandomBoolean());
-  }, []);
+    setEarlier(GameEngine.generateRandomBoolean());
+  }, [clearTimers]);
 
   // ---------------------------------------------------------------------------
   // Context Value
   // ---------------------------------------------------------------------------
 
-  const value: GameContextType = useMemo(
+  const value: SingleplayerGameContextType = useMemo(
     () => ({
       detailedEvents,
       currentPair,
@@ -390,5 +418,9 @@ export const GameProvider = ({ children }: GameProviderProps) => {
     ]
   );
 
-  return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
+  return (
+    <SingleplayerGameContext.Provider value={value}>
+      {children}
+    </SingleplayerGameContext.Provider>
+  );
 };
