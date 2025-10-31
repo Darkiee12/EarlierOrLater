@@ -2,7 +2,7 @@
 import EventService from "@/hooks/event/useEvent";
 import { EventType } from "@/lib/types/common/database.types";
 import { EventPayload } from "@/lib/types/events/EventPayload";
-import EventDateImpl from "@/lib/types/events/EventDate";
+import EventDateImpl from "@/lib/types/events/eventdate";
 import { Pair } from "@/lib/types/common/pair";
 import {
   createContext,
