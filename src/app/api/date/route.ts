@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import EventDateImpl from  "@/lib/types/events/EventDate"
+import EventDateImpl from  "@/lib/types/events/eventdate"
 import { PostgrestError } from "@supabase/supabase-js";
 import { EventPayload } from "@/lib/types/events/EventPayload";
 import ApiResponse, { ApiResult } from "@/lib/response";

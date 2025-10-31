@@ -3,7 +3,7 @@ import { useGet, usePost } from "@/hooks/common";
 import { EventData, EventType } from "@/lib/types/common/database.types";
 import { EventPayload } from "@/lib/types/events/EventPayload";
 import { Pair } from "@/lib/types/common/pair";
-import EventDateImpl from "@/lib/types/events/EventDate";
+import EventDateImpl from "@/lib/types/events/eventdate";
 import DetailedEvent, {DetailedEventType} from "@/lib/types/events/DetailedEvent";
 type Payload = {
   month: number;
