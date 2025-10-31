@@ -8,15 +8,19 @@ import {
   useEffect,
   useContext,
 } from "react";
-import { GameProvider, useGameContext } from "@/contexts/GameContext";
 import { FaLongArrowAltRight } from "react-icons/fa";
 import CountUp from "react-countup";
 import { PHASE_DURATION_SECONDS } from "@/common/constants";
+import {
+  SingleplayerGameProvider,
+  useSingleplayerGame,
+} from "@/contexts/SingleplayerGameContext";
 import Option from "@/lib/rust_prelude/option/Option";
 import { EventPayload } from "@/lib/types/events/event-payload";
 import { EventData } from "@/lib/types/common/database.types";
 import { monthNames } from "@/lib/types/events/eventdate";
-import { ThemeContext } from "./ThemeProvider";
+import { ThemeContext } from "@/components/theme/ThemeProvider";
+import Lobby from "@/components/game/Lobby";
 
 const formatYear = (y: number) => (y > 0 ? `${y}` : `${Math.abs(y)} BC`);
 
@@ -36,7 +40,7 @@ const LoadingSkeleton = () => (
 
 const CardSkeleton = () => (
   <div className="border-4 border-gray-300 dark:border-gray-700 rounded-xl p-2 py-4 w-full max-w-[500px]">
-    <div className="h-[28px] flex items-center justify-center py-2">
+    <div className="h-[68px] flex items-center justify-center">
       <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-48"></div>
     </div>
     <div className="py-6 px-2">
@@ -47,7 +51,7 @@ const CardSkeleton = () => (
 );
 
 const GamePanelContent = memo(() => {
-  const { gameStatus } = useGameContext();
+  const { gameStatus } = useSingleplayerGame();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -90,40 +94,31 @@ const InnerPanel: React.FC = () => {
     detailedEvents,
     month,
     date,
-    smallerYear,
+    resultYear,
+    earlier,
     eventType,
     selectedId,
     handleCardClick,
-  } = useGameContext();
+  } = useSingleplayerGame();
 
   const firstEvent = useMemo(
     () => currentPair.map((pair) => pair.first),
-    [currentPair],
+    [currentPair]
   );
   const secondEvent = useMemo(
     () => currentPair.map((pair) => pair.second),
-    [currentPair],
+    [currentPair]
   );
 
-  const firstDetailed: Option<EventData> = useMemo(() => {
-    let result: Option<EventData> = Option.None();
-    firstEvent.ifSome((e) => {
-      Option.into(detailedEvents.get(e.id)).ifSome((de) => {
-        result = Option.Some(de);
-      });
-    });
-    return result;
-  }, [detailedEvents, firstEvent]);
+  const firstDetailed: Option<EventData> = useMemo(
+    () => firstEvent.andThen((e) => Option.into(detailedEvents.get(e.id))),
+    [detailedEvents, firstEvent]
+  );
 
-  const secondDetailed: Option<EventData> = useMemo(() => {
-    let result: Option<EventData> = Option.None();
-    secondEvent.ifSome((e) => {
-      Option.into(detailedEvents.get(e.id)).ifSome((de) => {
-        result = Option.Some(de);
-      });
-    });
-    return result;
-  }, [detailedEvents, secondEvent]);
+  const secondDetailed: Option<EventData> = useMemo(
+    () => secondEvent.andThen((e) => Option.into(detailedEvents.get(e.id))),
+    [detailedEvents, secondEvent]
+  );
 
   const onContinue = useCallback(() => {
     nextPair();
@@ -135,9 +130,22 @@ const InnerPanel: React.FC = () => {
           {eventType.match({
             Some: (et) => (
               <>
-                {et === "births" && <div>Who was born earlier?</div>}
-                {et === "deaths" && <div>Who died earlier?</div>}
-                {et === "events" && <div>Which event came first?</div>}
+                {et === "birth" && (
+                  <div>
+                    Who was born <span>{earlier ? "earlier" : "later"}</span>
+                  </div>
+                )}
+                {et === "death" && (
+                  <div>
+                    Who died <span>{earlier ? "earlier" : "later"}</span>?
+                  </div>
+                )}
+                {et === "event" && (
+                  <div>
+                    Which event came{" "}
+                    <span>{earlier ? "earlier" : "later"}</span>?
+                  </div>
+                )}
               </>
             ),
             None: () => <div>Select an event</div>,
@@ -152,7 +160,7 @@ const InnerPanel: React.FC = () => {
           month={month}
           date={date}
           handleCardClick={handleCardClick}
-          smallerYear={smallerYear}
+          resultYear={resultYear}
           nextGameReady={nextGameReady}
           selectedId={selectedId}
         />
@@ -162,7 +170,7 @@ const InnerPanel: React.FC = () => {
           month={month}
           date={date}
           handleCardClick={handleCardClick}
-          smallerYear={smallerYear}
+          resultYear={resultYear}
           nextGameReady={nextGameReady}
           selectedId={selectedId}
         />
@@ -192,7 +200,7 @@ const GameCard: React.FC<{
   month: number;
   date: number;
   handleCardClick: (id: string) => void;
-  smallerYear: Option<number>;
+  resultYear: Option<number>;
   nextGameReady: boolean;
   selectedId: Option<string>;
 }> = memo(
@@ -202,7 +210,7 @@ const GameCard: React.FC<{
     month,
     date,
     handleCardClick,
-    smallerYear,
+    resultYear,
     nextGameReady,
     selectedId,
   }) => {
@@ -210,11 +218,11 @@ const GameCard: React.FC<{
 
     const showBorderColor = useMemo(
       () => nextGameReady && detailedEvent.isSome(),
-      [nextGameReady, detailedEvent],
+      [nextGameReady, detailedEvent]
     );
     const isChoiceDisabled = useMemo(
       () => selectedId.isSome() || nextGameReady,
-      [selectedId, nextGameReady],
+      [selectedId, nextGameReady]
     );
     const [shouldAnimate, setShouldAnimate] = useState(false);
 
@@ -232,27 +240,14 @@ const GameCard: React.FC<{
       });
     }, [event, handleCardClick]);
 
-    // Create a unique key based on event ID to force remount on new round
-    const animationKey = useMemo(() => {
-      let key = "no-event";
-      event.ifSome((e) => {
-        key = e.id;
-      });
-      selectedId.ifSome((sId) => {
-        key = `${key}-${sId}`;
-      });
-      return key;
-    }, [event, selectedId]);
-
-    // Helper to get the default border color based on theme
     const defaultBorderColor = useMemo(() => {
       switch (theme) {
         case "light":
-          return "border-gray-800"; // Dark gray for contrast on light background
+          return "border-gray-800";
         case "dark":
-          return "border-white"; // White for contrast on dark background
+          return "border-white";
         case "pink":
-          return "border-pink-400"; // Pink for theme consistency
+          return "border-pink-400";
         default:
           return "border-gray-800";
       }
@@ -261,9 +256,9 @@ const GameCard: React.FC<{
     return (
       <button
         type="button"
-        className={`border-4 rounded-xl p-2 py-4 w-full max-w-[500px] relative ${
+        className={`border-4 rounded-xl px-2 py-2 w-full max-w-[800px] relative ${
           showBorderColor
-            ? smallerYear.equals(detailedEvent.map((de) => de.year))
+            ? resultYear.equals(detailedEvent.map((de) => de.year))
               ? "border-green-500"
               : "border-red-500"
             : defaultBorderColor
@@ -275,79 +270,68 @@ const GameCard: React.FC<{
         disabled={isChoiceDisabled}
         onClick={onCardClick}
       >
-        {event.match({
-          Some: (eve) => (
+        {event
+          .map((eve) => (
             <>
-              <div className="h-[28px] flex items-center justify-center py-2">
-                {detailedEvent.match({
-                  Some: (de) => (
-                    <div className="w-full flex flex-col items-center justify-center font-bold">
-                      <span>{`${monthNames[month]} ${date},`}</span>
-                      <span className="text-2xl">
-                        {shouldAnimate ? (
-                          <CountUp
-                            key={animationKey}
-                            start={0}
-                            end={de.year}
-                            duration={PHASE_DURATION_SECONDS}
-                            separator=""
-                            formattingFn={formatYear}
-                            useEasing={true}
-                            preserveValue={false}
-                          />
-                        ) : null}
-                      </span>
-                    </div>
-                  ),
-                  None: () => <></>,
-                })}
+              <div className="h-[60px] w-full flex items-center justify-center">
+                {detailedEvent
+                  .map((de) => (
+                    <CardEventDate
+                      event={de}
+                      day={date}
+                      month={monthNames[month]}
+                      year={de.year}
+                      shouldAnimate={shouldAnimate}
+                      key={de.id}
+                    />
+                  ))
+                  .unwrapOr(<div className="h-full w-full" />)}
               </div>
               <p className="py-6 px-2">{eve.text}</p>
             </>
-          ),
-          None: () => <CardSkeleton />,
-        })}
+          ))
+          .unwrapOr(<CardSkeleton />)}
       </button>
     );
-  },
+  }
 );
 GameCard.displayName = "GameCard";
 
-const Lobby = () => {
-  const { selectEventType } = useGameContext();
+const CardEventDate: React.FC<{
+  event: EventPayload;
+  day: number;
+  month: string;
+  year: number;
+  shouldAnimate: boolean;
+}> = ({ event, day, month, year, shouldAnimate }) => {
+  const { selectedId } = useSingleplayerGame();
+  const animationKey = useMemo(() => selectedId.map((sId) => `${event.id}-${sId}`).unwrapOr(event.id), [event, selectedId]);
+
   return (
-    <div className="flex flex-col items-center justify-center">
-      <h2 className="text-3xl font-bold">Welcome to the Earlier or Later!</h2>
-      <p className="text-xl mt-4">Select the category to start the game.</p>
-      <div className="grid grid-cols-3 gap-x-4">
-        <button
-          className="mt-4 px-4 py-2 bg-blue-500 hover:bg-blue-300 text-white rounded hover:cursor-pointer transition-all duration-200 ease-in-out"
-          type="button"
-          onClick={() => selectEventType("events")}
-        >
-          Historical Events
-        </button>
-        <button
-          className="mt-4 px-4 py-2 bg-blue-500 hover:bg-blue-300 text-white rounded hover:cursor-pointer transition-all duration-200 ease-in-out"
-          type="button"
-          onClick={() => selectEventType("births")}
-        >
-          Births
-        </button>
-        <button
-          className="mt-4 px-4 py-2 bg-blue-500 hover:bg-blue-300 text-white rounded hover:cursor-pointer transition-all duration-200 ease-in-out"
-          type="button"
-          onClick={() => selectEventType("deaths")}
-        >
-          Deaths
-        </button>
-      </div>
+    <div className="w-full h-full flex flex-col items-center justify-center font-bold">
+      {shouldAnimate ? (
+        <>
+          <span>{`${month} ${day},`}</span>
+          <span className="text-2xl">
+            <CountUp
+              key={animationKey}
+              start={0}
+              end={year}
+              duration={PHASE_DURATION_SECONDS}
+              separator=""
+              formattingFn={formatYear}
+              useEasing={true}
+              preserveValue={false}
+            />
+          </span>
+        </>
+      ) : null}
     </div>
   );
 };
 
 const GameResult = () => {
-  const { points } = useGameContext();
+  const { points } = useSingleplayerGame();
   return (
     <div className="flex flex-col items-center justify-center">
       <h2 className="text-3xl font-bold">Game Over!</h2>
@@ -358,9 +342,9 @@ const GameResult = () => {
 
 const GamePanel: React.FC = () => {
   return (
-    <GameProvider>
+    <SingleplayerGameProvider>
       <GamePanelContent />
-    </GameProvider>
+    </SingleplayerGameProvider>
   );
 };
 
