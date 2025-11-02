@@ -14,11 +14,10 @@ import {
   useCallback,
   useRef,
 } from "react";
-import Option from "@/lib/rust_prelude/option/Option";
+import Option, { OptionExt } from "@/lib/rust_prelude/option";
 import { PHASE_DURATION_SECONDS } from "@/common/constants";
 import { GameEngine, ScoreCalculator } from "@/lib/game";
 import { useGameTimer } from "@/hooks/game";
-import OptionExt from "@/lib/rust_prelude/option/OptionExt";
 import { DetailedEventType } from "@/lib/types/events/DetailedEvent";
 
 // ============================================================================

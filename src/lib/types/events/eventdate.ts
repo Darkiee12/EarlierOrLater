@@ -1,5 +1,5 @@
 
-import Result from '@/lib/rust_prelude/result/Result';
+import Result from '@/lib/rust_prelude/result';
 import { z, ZodError } from 'zod';
 
 const eventDateSchema = z.object({
