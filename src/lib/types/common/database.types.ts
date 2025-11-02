@@ -302,5 +302,6 @@ export const Constants = {
   },
 } as const
 
+export type InsertEventType = Database["events"]["Tables"]["content"]["Insert"];
 export type EventType = Database["events"]["Enums"]["event_type"];
 export type EventData = Database["events"]["Tables"]["content"]["Row"];

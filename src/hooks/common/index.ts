@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import { useEffect } from "react";
 import { Success, Err, Fail } from "@/lib/response";
+import OptionExt from "@/lib/rust_prelude/option/OptionExt";
 
 /**
  * React Query-powered GET hook with optional post-processing.
@@ -12,66 +13,95 @@ import { Success, Err, Fail } from "@/lib/response";
  * React Query and also logged to the console.
  *
  * @template QueryKeyType - Type of the elements that make up the query key array.
- * @template ResponseType - The raw item type returned by the backend in `Success<ResponseType>`.
- * @template PostProcessType - The (optional) transformed type returned after applying `postProcess`.
- * Defaults to `ResponseType`.
+ * @template IntermediateType - The raw data type returned by the backend in `Success<IntermediateType>`.
+ * @template FinalType - The final type after optional post-processing. Defaults to `IntermediateType`.
  *
  * @param {QueryKeyType[]} queryKey - The React Query cache key for this request.
  * @param {{ url: string; config?: AxiosRequestConfig }} getParams - Request parameters.
- * @param {(data: ResponseType) => PostProcessType} [postProcess] - Optional transformation for the response item.
+ * @param {boolean} enabled - Whether the query should automatically run.
+ * @param {(data: IntermediateType) => FinalType} [postProcess] - Optional transformation for the response item.
  *
  * @returns {{
- *   data: ResponseType | undefined,
- *   error: AxiosError<Err | Fail> | null,
+ *   data: Option<FinalType>,
+ *   error: Option<AxiosError<Err | Fail>>,
  *   isLoading: boolean,
  *   isSuccess: boolean,
  *   isError: boolean
  * }} Query state for the GET request.
  *
  * @example
- * const { data, isLoading } = useGet([
+ * // Without post-processing
+ * const { data, isLoading } = useGet<string, EventData>([
  *   'events', year
  * ], { url: `/api/event?year=${year}` });
+ * // data is Option<EventData>
+ *
+ * @example
+ * // With post-processing
+ * const { data, isLoading } = useGet<string, RawEvent, ProcessedEvent>([
+ *   'events', year
+ * ], { url: `/api/event?year=${year}` }, true, (raw) => ({ ...raw, formatted: true }));
+ * // data is Option<ProcessedEvent>
  */
 
+// Overload 1: Without postProcess - returns IntermediateType
+export function useGet<QueryKeyType, IntermediateType>(
+  queryKey: QueryKeyType[],
+  getParams: {
+    url: string;
+    config?: AxiosRequestConfig;
+  },
+  enabled?: boolean,
+  postProcess?: undefined
+): {
+  data: Option<IntermediateType>;
+  error: Option<AxiosError<Err | Fail>>;
+  isLoading: boolean;
+  isSuccess: boolean;
+  isError: boolean;
+};
 
-export function useGet<
-  QueryKeyType,
-  ResponseType,
-  PostProcessType extends ResponseType = ResponseType,
->(
+export function useGet<QueryKeyType, IntermediateType, FinalType>(
+  queryKey: QueryKeyType[],
+  getParams: {
+    url: string;
+    config?: AxiosRequestConfig;
+  },
+  enabled: boolean,
+  postProcess: (data: IntermediateType) => FinalType
+): {
+  data: Option<FinalType>;
+  error: Option<AxiosError<Err | Fail>>;
+  isLoading: boolean;
+  isSuccess: boolean;
+  isError: boolean;
+};
+
+// Implementation
+export function useGet<QueryKeyType, IntermediateType, FinalType = IntermediateType>(
   queryKey: QueryKeyType[],
   getParams: {
     url: string;
     config?: AxiosRequestConfig;
   },
   enabled: boolean = true,
-  postProcess?: (data: ResponseType) => PostProcessType
+  postProcess?: (data: IntermediateType) => FinalType
 ) {
-  const fetcher = Option.into(postProcess).match({
-    Some: (fn) => {
-      const fetcher = async () =>
-        await axios
-          .get<Success<ResponseType>, AxiosResponse<Success<ResponseType>>>(getParams.url, getParams.config)
-          .then((res) => fn(res.data.item));
-      return fetcher;
-    },
+  async function fetcher() {
+    const request = await axios.get<
+      Success<IntermediateType>,
+      AxiosResponse<Success<IntermediateType>>
+    >(getParams.url, getParams.config);
+    return request.data.item;
+  }
 
-    None: () => {
-      const fetcher = async () =>
-        await axios
-          .get<Success<ResponseType>, AxiosResponse<Success<ResponseType>>>(getParams.url, getParams.config)
-          .then((res) => res.data.item);
-      return fetcher;
-    },
-  });
   const { data, error, isLoading, isSuccess, isError } = useQuery<
-    ResponseType,
+    IntermediateType,
     AxiosError<Err | Fail>
   >({
     queryKey: queryKey,
     queryFn: fetcher,
-    enabled
+    enabled,
   });
 
   useEffect(() => {
@@ -80,7 +110,25 @@ export function useGet<
     }
   }, [error]);
 
-  return { data, error, isLoading, isSuccess, isError };
+  const postProcessData: Option<FinalType> = OptionExt.match2({
+    opt1: data,
+    opt2: postProcess,
+    cases: {
+      SomeSome: (data: IntermediateType, postProcess) => {
+        return Option.Some(postProcess(data));
+      },
+      SomeNone: (data: IntermediateType) => Option.Some(data as unknown as FinalType),
+      _: () => Option.None(),
+    },
+  });
+
+  return {
+    data: postProcessData,
+    error: Option.into(error),
+    isLoading,
+    isSuccess,
+    isError,
+  };
 }
 
 /**
@@ -125,7 +173,7 @@ export function usePost<
   QueryKeyType,
   PayloadType,
   ResponseType,
-  PostProcessType extends ResponseType = ResponseType,
+  PostProcessType extends ResponseType = ResponseType
 >(
   queryKey: QueryKeyType[] | undefined,
   postParams: {
@@ -161,25 +209,27 @@ export function usePost<
     },
   });
 
-  const mutation = useMutation<ResponseType, AxiosError<Err | Fail, PayloadType>, PayloadType>(
-    {
-      mutationFn,
-      onSuccess: () => {
-        if (queryKey) {
-          queryClient.invalidateQueries({ queryKey });
-        }
-      },
-      onError: (err) => {
-        console.error("Error during post mutation:", err);
-      },
-    }
-  );
+  const mutation = useMutation<
+    ResponseType,
+    AxiosError<Err | Fail, PayloadType>,
+    PayloadType
+  >({
+    mutationFn,
+    onSuccess: () => {
+      if (queryKey) {
+        queryClient.invalidateQueries({ queryKey });
+      }
+    },
+    onError: (err) => {
+      console.error("Error during post mutation:", err);
+    },
+  });
 
   return {
     mutate: mutation.mutate,
     mutateAsync: mutation.mutateAsync,
-    data: mutation.data,
-    error: mutation.error,
+    data: Option.into(mutation.data),
+    error: Option.into(mutation.error),
     isLoading: mutation.isPending,
     isSuccess: mutation.isSuccess,
     isError: mutation.isError,

@@ -1,9 +1,9 @@
 "use client";
 import EventService from "@/hooks/event/useEvent";
-import { EventData, EventType } from "@/lib/types/common/database.types";
-import { EventPayload } from "@/lib/types/events/event-payload";
-import EventDateImpl from "@/lib/types/events/eventdate";
-import { Pair } from "@/lib/types/events/pairevent";
+import { EventType } from "@/lib/types/common/database.types";
+import { EventPayload } from "@/lib/types/events/EventPayload";
+import EventDateImpl from "@/lib/types/events/EventDate";
+import { Pair } from "@/lib/types/common/pair";
 import {
   createContext,
   useContext,
@@ -19,6 +19,7 @@ import { PHASE_DURATION_SECONDS } from "@/common/constants";
 import { GameEngine, ScoreCalculator } from "@/lib/game";
 import { useGameTimer } from "@/hooks/game";
 import OptionExt from "@/lib/rust_prelude/option/OptionExt";
+import { DetailedEventType } from "@/lib/types/events/DetailedEvent";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -28,7 +29,7 @@ type GameStatusType = "loading" | "lobby" | "ongoing" | "finished";
 
 interface SingleplayerGameContextType {
   // Game Data
-  detailedEvents: Map<string, EventData>;
+  detailedEvents: Map<string, DetailedEventType>;
   currentPair: Option<Pair<EventPayload>>;
   currentIndex: Option<number>;
   eventType: Option<EventType>;
@@ -91,9 +92,10 @@ export const SingleplayerGameProvider = ({
   // State - Events & Data
   // ---------------------------------------------------------------------------
   const [partialEvents, setPartialEvents] = useState<Pair<EventPayload>[]>([]);
-  const [detailedEvents, setDetailedEvents] = useState<Map<string, EventData>>(
-    new Map()
-  );
+  const [detailedEvents, setDetailedEvents] = useState<
+    Map<string, DetailedEventType>
+  >(new Map());
+  const detailedEventsRef = useRef<Map<string, DetailedEventType>>(new Map());
 
   // ---------------------------------------------------------------------------
   // State - Game Progress
@@ -108,7 +110,6 @@ export const SingleplayerGameProvider = ({
   // Refs
   // ---------------------------------------------------------------------------
   const scoredRoundsRef = useRef<Set<number>>(new Set());
-  const hasPreFetchedRef = useRef<boolean>(false);
 
   // ---------------------------------------------------------------------------
   // Hooks - Client-side
@@ -118,103 +119,57 @@ export const SingleplayerGameProvider = ({
   // ---------------------------------------------------------------------------
   // API Hooks
   // ---------------------------------------------------------------------------
-  const { mutate: getEvents, data: events } = EventService.usePostEvent(today);
-
-  // ---------------------------------------------------------------------------
-  // Effects - Pre-fetch Optimization
-  // ---------------------------------------------------------------------------
-  
-  // Pre-fetch data when component mounts to optimize load time
-  // This silently triggers API to check/fetch data without affecting game state
-  useEffect(() => {
-    // Guard: Only run once per component lifetime
-    if (hasPreFetchedRef.current) {
-      return;
-    }
-
-    const preFetchData = async () => {
-      try {
-        // Silently call the API for all event types to warm up the cache
-        // This doesn't set any state, just ensures data is in the database
-        const fetchPromises = [
-          fetch("/api/date", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              month: today.month,
-              date: today.date,
-              eventType: "event",
-            }),
-          }),
-          fetch("/api/date", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              month: today.month,
-              date: today.date,
-              eventType: "birth",
-            }),
-          }),
-          fetch("/api/date", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              month: today.month,
-              date: today.date,
-              eventType: "death",
-            }),
-          }),
-        ];
-        
-        await Promise.allSettled(fetchPromises);
-      } catch {
-        console.log("Pre-fetch completed with background fetch");
-      }
-    };
-
-    hasPreFetchedRef.current = true;
-    preFetchData();
-    
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Intentionally empty - only run once on mount with initial values
+  const { data: events } = EventService.useGetEventPairs(
+    today.date,
+    today.month,
+    eventType.unwrapOr("event"),
+    eventType.isSome()
+  );
 
   // ---------------------------------------------------------------------------
   // Computed Values
   // ---------------------------------------------------------------------------
   const totalRound = useMemo(() => partialEvents.length, [partialEvents]);
 
+  // Extract primitive values for stable dependencies
+  const currentIndex = current.unwrapOr(-1);
+
   const currentPair: Option<Pair<EventPayload>> = useMemo(
     () =>
-      current.andThen((idx) =>
-        idx < totalRound ? Option.Some(partialEvents[idx]) : Option.None()
-      ),
-    [current, partialEvents, totalRound]
+      currentIndex >= 0 && currentIndex < totalRound
+        ? Option.Some(partialEvents[currentIndex])
+        : Option.None(),
+    [currentIndex, partialEvents, totalRound]
   );
 
-  const requestedEventIds = useMemo(
-    () =>
-      currentPair.map((pair) => [pair.first.id, pair.second.id]).unwrapOr([]),
-    [currentPair]
-  );
+  const requestedEventIds = useMemo(() => {
+    return currentPair.map((p) => [p.first.id, p.second.id]).unwrapOr([]);
+  }, [currentPair]);
 
   const hasSelection = useMemo(() => selectedId.isSome(), [selectedId]);
 
-  const currentDetailPair = useMemo<Option<[EventData, EventData]>>(() => {
-    return currentPair.andThen((pair) =>
-      OptionExt.match2({
-        opt1: detailedEvents.get(pair.first.id),
-        opt2: detailedEvents.get(pair.second.id),
-        cases: {
-          SomeSome: (f, s) => Option.Some([f, s]),
-          _: () => Option.None(),
-        },
-      })
-    );
+  const currentDetailPair = useMemo<
+    Option<[DetailedEventType, DetailedEventType]>
+  >(() => {
+    return currentPair.match({
+      Some: (pair) => {
+        return OptionExt.match2({
+          opt1: detailedEvents.get(pair.first.id),
+          opt2: detailedEvents.get(pair.second.id),
+          cases: {
+            SomeSome: (f, s) => Option.Some([f, s]),
+            _: () => Option.None(),
+          },
+        });
+      },
+      None: () => Option.None(),
+    });
   }, [currentPair, detailedEvents]);
+
   const resultYear = useMemo(() => {
-    return currentDetailPair.map(([f, s]) =>
-      ScoreCalculator.getResultYear(f, s, earlier)
-    );
+    return currentDetailPair.map(([first, second]) => {
+      return ScoreCalculator.getResultYear(first, second, earlier);
+    });
   }, [currentDetailPair, earlier]);
 
   // ---------------------------------------------------------------------------
@@ -231,44 +186,37 @@ export const SingleplayerGameProvider = ({
 
   // Set game status to loading when event type is selected
   useEffect(() => {
-    eventType.ifSome(() => setGameStatus("loading"));
-  }, [eventType]);
-
-  // Fetch events when event type is selected
-  useEffect(() => {
-    eventType.ifSome((et) => {
-      getEvents({
-        month: today.month,
-        date: today.date,
-        eventType: et,
-      });
+    eventType.ifSome(() => {
+      setGameStatus("loading");
+      setPartialEvents([]);
     });
-  }, [eventType, getEvents, today.month, today.date]);
+  }, [eventType]);
 
   // Initialize game when events are loaded
   useEffect(() => {
-    if (events) {
-      setPartialEvents(events);
-      setGameStatus("ongoing");
-      scoredRoundsRef.current = new Set();
-      setRevealReady(false);
-      setEarlier(GameEngine.generateRandomBoolean());
-      clearTimers();
-    }
-  }, [events, clearTimers]);
+    events.ifSomeWithPredicate(
+      (evs) => evs.length > 0 && gameStatus === "loading",
+      (evs) => {
+        setPartialEvents(evs);
+        setGameStatus("ongoing");
+        scoredRoundsRef.current = new Set();
+        setRevealReady(false);
+        setEarlier(GameEngine.generateRandomBoolean());
+        clearTimers();
+      }
+    );
+  }, [events, clearTimers, gameStatus]);
 
-  // Check if game is finished
   useEffect(() => {
-    current.ifSome((idx) => {
-      if (
-        gameStatus === "ongoing" &&
-        GameEngine.isGameFinished(idx, totalRound)
-      ) {
+    current.ifSomeWithPredicate(
+      (idx) =>
+        gameStatus === "ongoing" && GameEngine.isGameFinished(idx, totalRound),
+      () => {
         setGameStatus("finished");
         ScoreCalculator.saveBestScore(points);
         clearTimers();
       }
-    });
+    );
   }, [current, gameStatus, totalRound, clearTimers, points]);
 
   // ---------------------------------------------------------------------------
@@ -281,13 +229,16 @@ export const SingleplayerGameProvider = ({
 
     setDetailedEvents((prev) => {
       let changed = false;
-      const newMap = new Map(prev);
-      for (const ev of fetchedDetailEvents) {
+      const newMap: Map<string, DetailedEventType> = new Map(prev);
+      for (const ev of fetchedDetailEvents.unwrapOr([])) {
         const existing = newMap.get(ev.id);
-        if (!existing || existing !== ev) {
+        if (!existing) {
           newMap.set(ev.id, ev);
           changed = true;
         }
+      }
+      if (changed) {
+        detailedEventsRef.current = newMap;
       }
       return changed ? newMap : prev;
     });
@@ -381,9 +332,14 @@ export const SingleplayerGameProvider = ({
   // Context Value
   // ---------------------------------------------------------------------------
 
+  // Use ref for detailedEvents to maintain stable reference
+  useEffect(() => {
+    detailedEventsRef.current = detailedEvents;
+  }, [detailedEvents]);
+
   const value: SingleplayerGameContextType = useMemo(
     () => ({
-      detailedEvents,
+      detailedEvents: detailedEventsRef.current,
       currentPair,
       currentIndex: current,
       month: today.month,
@@ -400,7 +356,6 @@ export const SingleplayerGameProvider = ({
       earlier,
     }),
     [
-      detailedEvents,
       currentPair,
       current,
       selectedId,

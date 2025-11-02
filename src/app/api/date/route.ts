@@ -1,26 +1,57 @@
-import { NextResponse } from "next/server";
-import EventDateImpl from  "@/lib/types/events/eventdate"
+import { NextRequest, NextResponse } from "next/server";
+import EventDateImpl from  "@/lib/types/events/EventDate"
 import { PostgrestError } from "@supabase/supabase-js";
-import { EventPayload } from "@/lib/types/events/event-payload";
+import { EventPayload } from "@/lib/types/events/EventPayload";
 import ApiResponse, { ApiResult } from "@/lib/response";
-import { Pair } from "@/lib/types/events/pairevent";
-import EventServiceInstance from "@/services/server/event/EventService";
+import { Pair } from "@/lib/types/common/pair";
 import { StaleDataError } from "@/services/server/event/EventDatabase";
+import EventService from "@/services/server/event/EventService";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
-const COUNT_DEFAULT = 20;
+const dateQuerySchema = z.object({
+  day: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().min(1).max(31)),
+  month: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().min(1).max(12)),
+  eventType: z.enum(["event", "birth", "death"]).optional(),
+});
 
-export async function POST(request: Request): Promise<NextResponse<ApiResult<Pair<EventPayload>[]>>> {
-  const result = EventDateImpl.fromJSON(await request.json());
-  return result.match({
+export async function GET(request: NextRequest): Promise<NextResponse<ApiResult<Pair<EventPayload>[]>>> {
+  const searchParams = request.nextUrl.searchParams;
+  const day = searchParams.get("day");
+  const month = searchParams.get("month");
+  const eventType = searchParams.get("eventType");
+
+  const validationResult = dateQuerySchema.safeParse({
+    day,
+    month,
+    eventType: eventType || undefined,
+  });
+
+  if (!validationResult.success) {
+    const errorMessages = validationResult.error.issues.map(
+      (issue) => `${issue.path.join(".")}: ${issue.message}`
+    ).join(", ");
+    return NextResponse.json(
+      ApiResponse.error(
+        `Invalid query parameters: ${errorMessages}`,
+        "invalid_query_params"
+      ),
+      { status: 400 }
+    );
+  }
+
+  const { day: validDay, month: validMonth, eventType: validEventType } = validationResult.data;
+
+  const eventDateResult = EventDateImpl.fromNumber(validMonth, validDay);
+  
+  return eventDateResult.match({
     Ok: async (eventDate) => {
-      const pairsResult = await EventServiceInstance.getEventPairsForDate(
-        eventDate,
-        COUNT_DEFAULT
-      );
+      const typeToUse = validEventType || "event";
+      const pairsResult = await EventService.getEventPairsForDate(eventDate, typeToUse);
+      
       return pairsResult.match({
         Ok: (pairs) =>
           NextResponse.json(ApiResponse.success(pairs), {
@@ -45,10 +76,8 @@ export async function POST(request: Request): Promise<NextResponse<ApiResult<Pai
     Err: (error) => {
       console.error(error);
       return NextResponse.json(
-        ApiResponse.error("Invalid request body", "invalid_request_body"),
-        {
-          status: 400,
-        }
+        ApiResponse.error("Invalid date", "invalid_date"),
+        { status: 400 }
       );
     },
   });
