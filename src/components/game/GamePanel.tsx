@@ -8,6 +8,7 @@ import {
   useEffect,
   useContext,
 } from "react";
+import Image from "next/image";
 import { FaLongArrowAltRight } from "react-icons/fa";
 import CountUp from "react-countup";
 import { PHASE_DURATION_SECONDS } from "@/common/constants";
@@ -16,11 +17,11 @@ import {
   useSingleplayerGame,
 } from "@/contexts/SingleplayerGameContext";
 import Option from "@/lib/rust_prelude/option/Option";
-import { EventPayload } from "@/lib/types/events/event-payload";
-import { EventData } from "@/lib/types/common/database.types";
-import { monthNames } from "@/lib/types/events/eventdate";
+import { EventPayload } from "@/lib/types/events/EventPayload";
+import { monthNames } from "@/lib/types/events/EventDate";
 import { ThemeContext } from "@/components/theme/ThemeProvider";
 import Lobby from "@/components/game/Lobby";
+import { DetailedEventType } from "@/lib/types/events/DetailedEvent";
 
 const formatYear = (y: number) => (y > 0 ? `${y}` : `${Math.abs(y)} BC`);
 
@@ -58,14 +59,6 @@ const GamePanelContent = memo(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted && gameStatus === "lobby") {
-    return <Lobby />;
-  }
-
-  if (!mounted && gameStatus === "finished") {
-    return <GameResult />;
-  }
-
   if (!mounted) {
     return <LoadingSkeleton />;
   }
@@ -74,11 +67,7 @@ const GamePanelContent = memo(() => {
     <div className="w-full">
       {gameStatus === "lobby" && <Lobby />}
       {gameStatus === "loading" && <LoadingSkeleton />}
-      {gameStatus === "ongoing" && (
-        <>
-          <InnerPanel />
-        </>
-      )}
+      {gameStatus === "ongoing" && <InnerPanel />}
       {gameStatus === "finished" && <GameResult />}
     </div>
   );
@@ -110,14 +99,24 @@ const InnerPanel: React.FC = () => {
     [currentPair]
   );
 
-  const firstDetailed: Option<EventData> = useMemo(
-    () => firstEvent.andThen((e) => Option.into(detailedEvents.get(e.id))),
-    [detailedEvents, firstEvent]
+  // Memoize based on event IDs rather than the entire detailedEvents Map
+  const firstEventId = useMemo(
+    () => firstEvent.map((e) => e.id).unwrapOr(""),
+    [firstEvent]
+  );
+  const secondEventId = useMemo(
+    () => secondEvent.map((e) => e.id).unwrapOr(""),
+    [secondEvent]
   );
 
-  const secondDetailed: Option<EventData> = useMemo(
-    () => secondEvent.andThen((e) => Option.into(detailedEvents.get(e.id))),
-    [detailedEvents, secondEvent]
+  const firstDetailed: Option<DetailedEventType> = useMemo(
+    () => Option.into(detailedEvents.get(firstEventId)),
+    [detailedEvents, firstEventId]
+  );
+
+  const secondDetailed: Option<DetailedEventType> = useMemo(
+    () => Option.into(detailedEvents.get(secondEventId)),
+    [detailedEvents, secondEventId]
   );
 
   const onContinue = useCallback(() => {
@@ -196,7 +195,7 @@ const InnerPanel: React.FC = () => {
 
 const GameCard: React.FC<{
   event: Option<EventPayload>;
-  detailedEvent: Option<EventData>;
+  detailedEvent: Option<DetailedEventType>;
   month: number;
   date: number;
   handleCardClick: (id: string) => void;
@@ -215,24 +214,23 @@ const GameCard: React.FC<{
     selectedId,
   }) => {
     const { theme } = useContext(ThemeContext);
-
+    
+    const hasDetailedEvent = detailedEvent.isSome();
+    const hasSelectedId = selectedId.isSome();
+    
     const showBorderColor = useMemo(
-      () => nextGameReady && detailedEvent.isSome(),
-      [nextGameReady, detailedEvent]
+      () => nextGameReady && hasDetailedEvent,
+      [nextGameReady, hasDetailedEvent]
     );
     const isChoiceDisabled = useMemo(
-      () => selectedId.isSome() || nextGameReady,
-      [selectedId, nextGameReady]
+      () => hasSelectedId || nextGameReady,
+      [hasSelectedId, nextGameReady]
     );
     const [shouldAnimate, setShouldAnimate] = useState(false);
 
     useEffect(() => {
-      if (selectedId.isSome() && detailedEvent.isSome()) {
-        setShouldAnimate(true);
-      } else {
-        setShouldAnimate(false);
-      }
-    }, [selectedId, detailedEvent]);
+      setShouldAnimate(hasSelectedId && hasDetailedEvent);
+    }, [hasSelectedId, hasDetailedEvent]);
 
     const onCardClick = useCallback(() => {
       event.ifSome((e) => {
@@ -253,6 +251,8 @@ const GameCard: React.FC<{
       }
     }, [theme]);
 
+    const getImageSrc = () => event.andThen((e) => Option.into(e.thumbnail?.source));
+
     return (
       <button
         type="button"
@@ -272,40 +272,74 @@ const GameCard: React.FC<{
       >
         {event
           .map((eve) => (
-            <>
-              <div className="h-[60px] w-full flex items-center justify-center">
-                {detailedEvent
-                  .map((de) => (
-                    <CardEventDate
-                      event={de}
-                      day={date}
-                      month={monthNames[month]}
-                      year={de.year}
-                      shouldAnimate={shouldAnimate}
-                      key={de.id}
-                    />
-                  ))
-                  .unwrapOr(<div className="h-full w-full" />)}
+            <div key={eve.id} className="flex w-full px-1">
+              <div className="w-2/3">
+                <div className="h-[60px] w-full flex items-center justify-center">
+                  {detailedEvent
+                    .map((de) => (
+                      <CardEventDate
+                        event={de}
+                        day={date}
+                        month={monthNames[month]}
+                        year={de.year}
+                        shouldAnimate={shouldAnimate}
+                        key={de.id}
+                      />
+                    ))
+                    .unwrapOr(<div className="h-full w-full" />)}
+                </div>
+                <p className="py-6 px-2">{eve.text}</p>
               </div>
-              <p className="py-6 px-2">{eve.text}</p>
-            </>
+              <div className="w-1/3 flex items-center justify-center relative min-h-[150px] max-h-[200px]">
+                {getImageSrc().match({
+                  Some: (src) => (
+                    <div className="relative w-full h-full">
+                      <Image 
+                        src={src} 
+                        alt={eve.title} 
+                        fill
+                        className="object-contain"
+                        sizes="(max-width: 800px) 33vw, 266px"
+                      />
+                    </div>
+                  ),
+                  None: () => <div className="h-full w-full" />
+                })}
+              </div>
+            </div>
           ))
           .unwrapOr(<CardSkeleton />)}
       </button>
+    );
+  },
+  (prevProps, nextProps) => {
+    return (
+      prevProps.event.equals(nextProps.event) &&
+      prevProps.detailedEvent.equals(nextProps.detailedEvent) &&
+      prevProps.month === nextProps.month &&
+      prevProps.date === nextProps.date &&
+      prevProps.nextGameReady === nextProps.nextGameReady &&
+      prevProps.selectedId.equals(nextProps.selectedId) &&
+      prevProps.resultYear.equals(nextProps.resultYear) &&
+      prevProps.handleCardClick === nextProps.handleCardClick
     );
   }
 );
 GameCard.displayName = "GameCard";
 
+
 const CardEventDate: React.FC<{
-  event: EventPayload;
+  event: DetailedEventType;
   day: number;
   month: string;
   year: number;
   shouldAnimate: boolean;
 }> = ({ event, day, month, year, shouldAnimate }) => {
   const { selectedId } = useSingleplayerGame();
-  const animationKey = useMemo(() => selectedId.map((sId) => `${event.id}-${sId}`).unwrapOr(event.id), [event, selectedId]);
+  const animationKey = useMemo(
+    () => selectedId.map((sId) => `${event.id}-${sId}`).unwrapOr(event.id),
+    [event, selectedId]
+  );
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center font-bold">

@@ -220,6 +220,7 @@ const match2 = <T1, T2, U>(params: {
   });
 };
 
+
 const OptionExt = {
   ifSome2,
   ifSome3,
