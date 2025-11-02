@@ -1,7 +1,7 @@
 import { createClient, PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { Database, EventData, EventType } from "@/lib/types/common/database.types";
-import Option from "@/lib/rust_prelude/option/Option";
-import Result from "@/lib/rust_prelude/result/Result";
+import Option from "@/lib/rust_prelude/option";
+import Result from "@/lib/rust_prelude/result";
 import EventDateImpl from "@/lib/types/events/eventdate";
 export class NotFoundError extends Error {
   constructor(message: string) {

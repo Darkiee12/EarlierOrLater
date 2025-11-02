@@ -1,9 +1,8 @@
-import Option from "@/lib/rust_prelude/option/Option";
+import Option, { OptionExt } from "@/lib/rust_prelude/option";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import { useEffect } from "react";
 import { Success, Err, Fail } from "@/lib/response";
-import OptionExt from "@/lib/rust_prelude/option/OptionExt";
 
 /**
  * React Query-powered GET hook with optional post-processing.

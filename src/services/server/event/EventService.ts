@@ -1,5 +1,5 @@
 
-import Result from "@/lib/rust_prelude/result/Result";
+import Result from "@/lib/rust_prelude/result";
 import EventDateImpl from "@/lib/types/events/eventdate";
 import { EventData, EventType } from "@/lib/types/common/database.types";
 import EventDatabaseInstance, {

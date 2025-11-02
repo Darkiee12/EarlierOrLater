@@ -16,7 +16,7 @@ import {
   SingleplayerGameProvider,
   useSingleplayerGame,
 } from "@/contexts/SingleplayerGameContext";
-import Option from "@/lib/rust_prelude/option/Option";
+import Option from "@/lib/rust_prelude/option";
 import { EventPayload } from "@/lib/types/events/EventPayload";
 import { monthNames } from "@/lib/types/events/eventdate";
 import { ThemeContext } from "@/components/theme/ThemeProvider";

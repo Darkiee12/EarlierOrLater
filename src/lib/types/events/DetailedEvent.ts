@@ -4,7 +4,7 @@ import {
   PayloadImage,
   PayloadImageSchema,
 } from "@/lib/types/common";
-import Option from "@/lib/rust_prelude/option/Option";
+import Option from "@/lib/rust_prelude/option";
 import { EventData, Json } from "../common/database.types";
 // export interface Wikipedia {
 //   births: Event[];
