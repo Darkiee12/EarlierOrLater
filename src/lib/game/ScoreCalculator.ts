@@ -1,4 +1,4 @@
-import { EventData } from "@/lib/types/common/database.types";
+import { DetailedEventType } from "../types/events/DetailedEvent";
 
 /**
  * Pure scoring logic for the game (isomorphic - works on client & server)
@@ -13,8 +13,8 @@ export class ScoreCalculator {
    * @returns true if the selection is correct, false otherwise
    */
   static isCorrectSelection(
-    firstEvent: EventData,
-    secondEvent: EventData,
+    firstEvent: DetailedEventType,
+    secondEvent: DetailedEventType,
     selectedId: string,
     shouldPickEarlier: boolean
   ): boolean {
@@ -25,8 +25,8 @@ export class ScoreCalculator {
       return true;
     }
 
-    const pickEarlier = (a: EventData, b: EventData) => (a.year < b.year ? a : b);
-    const pickLater = (a: EventData, b: EventData) => (a.year > b.year ? a : b);
+    const pickEarlier = (a: DetailedEventType, b: DetailedEventType) => (a.year < b.year ? a : b);
+    const pickLater = (a: DetailedEventType, b: DetailedEventType) => (a.year > b.year ? a : b);
 
     const winner = shouldPickEarlier 
       ? pickEarlier(firstEvent, secondEvent) 
@@ -43,8 +43,8 @@ export class ScoreCalculator {
    * @returns The year that should be highlighted as correct
    */
   static getResultYear(
-    firstEvent: EventData,
-    secondEvent: EventData,
+    firstEvent: DetailedEventType,
+    secondEvent: DetailedEventType,
     shouldPickEarlier: boolean
   ): number {
     return shouldPickEarlier 

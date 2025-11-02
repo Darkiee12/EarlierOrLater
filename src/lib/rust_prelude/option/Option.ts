@@ -181,6 +181,15 @@ export default class Option<T> {
     }
   }
 
+  raw(): T | undefined {
+    switch (this.option.tag) {
+      case "some":
+        return this.option.value;
+      case "none":
+        return undefined;
+    }
+  }
+
   /**
    * Returns the contained value or computes it from a function.
    * 
@@ -200,8 +209,7 @@ export default class Option<T> {
       case "none":
         return fn();
     }
-  }
-  
+  }  
 
   /**
    * Extracts the contained value with a custom error message.
@@ -378,6 +386,21 @@ export default class Option<T> {
   ifSome(fn: (value: T) => void): void {
     if (this.option.tag === "some") {
       fn(this.option.value);
+    }
+  }
+
+  /**
+   * Executes a function if the Option contains a value and satisfies a predicate.
+   * Useful for conditional side effects.
+   * @param predicate - Predicate function to test the contained value
+   * @param fn - Function to execute with the contained value if predicate is true
+   * @returns void
+   */
+  ifSomeWithPredicate(predicate: (value: T) => boolean, fn: (value: T) => void): void {
+    if (this.option.tag === "some") {
+      if (predicate(this.option.value)) {
+        fn(this.option.value);
+      }
     }
   }
 
