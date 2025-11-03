@@ -8,10 +8,10 @@ export default function Home() {
       <header className="flex-shrink-0 flex-grow-0">
         <Header />
       </header>
-      <main className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-start px-4 py-6">
+      <main className="flex-1 min-h-0 flex flex-col items-center justify-start px-4 py-6">
         <GamePanel />
       </main>
-      <footer className="flex-shrink-0 flex-grow-0 flex gap-6 flex-wrap items-center justify-center py-4 text-sm">
+      <footer className="flex-shrink-0 flex-grow-0 flex flex-wrap items-center justify-center py-2 text-sm">
         <Footer />
       </footer>
     </div>

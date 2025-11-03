@@ -22,6 +22,7 @@ import { monthNames } from "@/lib/types/events/eventdate";
 import { ThemeContext } from "@/components/theme/ThemeProvider";
 import Lobby from "@/components/game/Lobby";
 import { DetailedEventType } from "@/lib/types/events/DetailedEvent";
+import DotsProgress from "../general/DotProgress";
 
 const formatYear = (y: number) => (y > 0 ? `${y}` : `${Math.abs(y)} BC`);
 
@@ -53,20 +54,9 @@ const CardSkeleton = () => (
 
 const GamePanelContent = memo(() => {
   const { gameStatus } = useSingleplayerGame();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return <LoadingSkeleton />;
-  }
-
   return (
-    <div className="w-full">
-      {gameStatus === "lobby" && <Lobby />}
-      {gameStatus === "loading" && <LoadingSkeleton />}
+    <div className="w-full h-full">
+      {(gameStatus === "lobby" || gameStatus === "loading") && <Lobby />}
       {gameStatus === "ongoing" && <InnerPanel />}
       {gameStatus === "finished" && <GameResult />}
     </div>
@@ -77,6 +67,7 @@ GamePanelContent.displayName = "GamePanelContent";
 const InnerPanel: React.FC = () => {
   const {
     currentPair,
+    currentIndex,
     points,
     nextPair,
     nextGameReady,
@@ -88,6 +79,7 @@ const InnerPanel: React.FC = () => {
     eventType,
     selectedId,
     handleCardClick,
+    answers,
   } = useSingleplayerGame();
 
   const firstEvent = useMemo(
@@ -99,7 +91,6 @@ const InnerPanel: React.FC = () => {
     [currentPair]
   );
 
-  // Memoize based on event IDs rather than the entire detailedEvents Map
   const firstEventId = useMemo(
     () => firstEvent.map((e) => e.id).unwrapOr(""),
     [firstEvent]
@@ -123,9 +114,9 @@ const InnerPanel: React.FC = () => {
     nextPair();
   }, [nextPair]);
   return (
-    <>
-      <div className="flex flex-col justify-between items-center mb-4">
-        <h2 className="font-bold text-2xl py-2 w-full text-center">
+    <div className="w-full h-full flex flex-col">
+      <div className="flex-shrink-0 flex-grow-0 flex flex-col justify-between items-center mb-4">
+        <h2 className="font-bold text-2xl py-1 w-full text-center">
           {eventType.match({
             Some: (et) => (
               <>
@@ -150,9 +141,9 @@ const InnerPanel: React.FC = () => {
             None: () => <div>Select an event</div>,
           })}
         </h2>
-        <p className="text-xl font-semibold">Score: {points}</p>
+        
       </div>
-      <div className="flex flex-col gap-y-5 items-center w-full">
+      <div className="flex-1 flex flex-col gap-y-2 justify-center items-center w-full overflow-y-auto">
         <GameCard
           event={firstEvent}
           detailedEvent={firstDetailed}
@@ -173,23 +164,23 @@ const InnerPanel: React.FC = () => {
           nextGameReady={nextGameReady}
           selectedId={selectedId}
         />
-        <div className="flex items-center justify-center mt-3 h-[52px]">
-          {
-            <button
-              className={`rounded-lg py-3 px-2 border-2 ${
-                nextGameReady
-                  ? "border-blue-500 text-blue-500 hover:cursor-pointer"
-                  : "border-gray-400 dark:border-gray-600 cursor-not-allowed"
-              } font-semibold text-lg flex items-center justify-center transition-all duration-200 ease-in-out`}
-              onClick={onContinue}
-              disabled={!nextGameReady}
-            >
-              Continue {<FaLongArrowAltRight className="inline-block ml-2" />}
-            </button>
-          }
-        </div>
       </div>
-    </>
+      <div className="w-full flex-shrink-0 flex-grow-0 flex items-center justify-around py-1 h-[52px]">
+        <p className="text-xl font-semibold">Score: {points}</p>
+        <DotsProgress statuses={answers} currentIndex={currentIndex.unwrapOr(0)} />
+        <button
+          className={`rounded-lg py-1 px-1 border-2 ${
+            nextGameReady
+              ? "border-blue-500 text-blue-500 hover:cursor-pointer"
+              : "border-gray-400 dark:border-gray-600 cursor-not-allowed"
+          } font-semibold text-lg flex items-center justify-center transition-all duration-200 ease-in-out`}
+          onClick={onContinue}
+          disabled={!nextGameReady}
+        >
+          Continue {<FaLongArrowAltRight className="inline-block ml-2" />}
+        </button>
+      </div>
+    </div>
   );
 };
 
@@ -214,10 +205,10 @@ const GameCard: React.FC<{
     selectedId,
   }) => {
     const { theme } = useContext(ThemeContext);
-    
+
     const hasDetailedEvent = detailedEvent.isSome();
     const hasSelectedId = selectedId.isSome();
-    
+
     const showBorderColor = useMemo(
       () => nextGameReady && hasDetailedEvent,
       [nextGameReady, hasDetailedEvent]
@@ -251,12 +242,13 @@ const GameCard: React.FC<{
       }
     }, [theme]);
 
-    const getImageSrc = () => event.andThen((e) => Option.into(e.thumbnail?.source));
+    const getImageSrc = () =>
+      event.andThen((e) => Option.into(e.thumbnail?.source));
 
     return (
       <button
         type="button"
-        className={`border-4 rounded-xl px-2 py-2 w-full max-w-[800px] relative ${
+        className={`border-4 rounded-xl px-2 w-full max-w-[800px] relative ${
           showBorderColor
             ? resultYear.equals(detailedEvent.map((de) => de.year))
               ? "border-green-500"
@@ -290,20 +282,20 @@ const GameCard: React.FC<{
                 </div>
                 <p className="py-6 px-2">{eve.text}</p>
               </div>
-              <div className="w-1/3 flex items-center justify-center relative min-h-[150px] max-h-[200px]">
+              <div className="w-1/3 flex items-center justify-center relative min-h-[150px] py-2">
                 {getImageSrc().match({
                   Some: (src) => (
                     <div className="relative w-full h-full">
-                      <Image 
-                        src={src} 
-                        alt={eve.title} 
+                      <Image
+                        src={src}
+                        alt={eve.title}
                         fill
                         className="object-contain"
                         sizes="(max-width: 800px) 33vw, 266px"
                       />
                     </div>
                   ),
-                  None: () => <div className="h-full w-full" />
+                  None: () => <div className="h-full w-full" />,
                 })}
               </div>
             </div>
@@ -326,7 +318,6 @@ const GameCard: React.FC<{
   }
 );
 GameCard.displayName = "GameCard";
-
 
 const CardEventDate: React.FC<{
   event: DetailedEventType;
@@ -367,7 +358,7 @@ const CardEventDate: React.FC<{
 const GameResult = () => {
   const { points } = useSingleplayerGame();
   return (
-    <div className="flex flex-col items-center justify-center">
+    <div className="w-full h-full flex flex-col items-center justify-center">
       <h2 className="text-3xl font-bold">Game Over!</h2>
       <p className="text-xl mt-4">Your final score is: {points}</p>
     </div>
