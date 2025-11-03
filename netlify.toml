@@ -2,6 +2,20 @@
   command = "bun run build"
   publish = ".next"
 
+# Redirect www to non-www (301 permanent redirect for SEO)
+[[redirects]]
+  from = "https://www.earlierorlater.netlify.app/*"
+  to = "https://earlierorlater.netlify.app/:splat"
+  status = 301
+  force = true
+
+# If using custom domain, uncomment below
+# [[redirects]]
+#   from = "https://www.earlierorlater.com/*"
+#   to = "https://earlierorlater.com/:splat"
+#   status = 301
+#   force = true
+
 [[redirects]]
   from = "/_next/image"
   to = "/.netlify/images?url=:url&w=:width&q=:quality"
@@ -18,3 +32,11 @@
   for = "/_next/static/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
