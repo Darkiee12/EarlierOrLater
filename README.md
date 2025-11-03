@@ -1,4 +1,16 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Earlier or Later - Historical Events Timeline Game
+
+A Next.js-based educational game that challenges players to guess which historical events, births, or deaths happened earlier. Features daily-changing content based on today's date in history.
+
+## Features
+
+- 🎮 Interactive timeline quiz game
+- 📅 Daily historical events from Wikipedia API
+- 🎯 Three categories: Events, Births, Deaths
+- 📊 Score tracking system
+- 🌓 Dark/Light mode support
+- 📱 Mobile-responsive design
+- ♿ SEO-optimized with structured data
 
 ## Getting Started
 
