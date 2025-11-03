@@ -233,6 +233,7 @@ export const SingleplayerGameProvider = ({
       let changed = false;
       const newMap: Map<string, DetailedEventType> = new Map(prev);
       for (const ev of fetchedDetailEvents.unwrapOr([])) {
+        
         const existing = newMap.get(ev.id);
         if (!existing) {
           newMap.set(ev.id, ev);

@@ -4,48 +4,7 @@ import {
   PayloadImage,
   PayloadImageSchema,
 } from "@/lib/types/common";
-import Option from "@/lib/rust_prelude/option";
 import { EventData, Json } from "../common/database.types";
-// export interface Wikipedia {
-//   births: Event[];
-//   deaths: Event[];
-//   events: Event[];
-// }
-
-// export interface Event {
-//   text: string;
-//   pages: Page[];
-//   year: number;
-// }
-
-// export interface Page {
-//   wikibase_item: string;
-//   titles: Titles;
-//   pageid: number;
-//   thumbnail?: OriginalImage;
-//   originalimage?: OriginalImage;
-//   content_urls: ContentUrls;
-//   extract: string;
-// }
-
-// interface ContentUrls {
-//   desktop: PageUrl;
-//   mobile: PageUrl;
-// }
-
-// interface PageUrl {
-//   page: string;
-// }
-
-// interface OriginalImage {
-//   source: string;
-//   width: number;
-//   height: number;
-// }
-
-// interface Titles {
-//   normalized: string;
-// }
 
 const DetailedEventSchema = z.object({
   createdAt: z.string().nullable(),
@@ -56,8 +15,8 @@ const DetailedEventSchema = z.object({
   contentUrls: ContentUrlsSchema,
   extract: z.string(),
   id: z.uuid(),
-  originalImage: PayloadImageSchema.nullable().transform((val) => Option.into(val)),
-  thumbnail: PayloadImageSchema.nullable().transform((val) => Option.into(val)),
+  originalImage: PayloadImageSchema.nullable(),
+  thumbnail: PayloadImageSchema.nullable(),
   title: z.string(),
 });
 
@@ -66,12 +25,12 @@ export type DetailedEventType = z.infer<typeof DetailedEventSchema>;
 
 const getOriginalImage = (
   img: Json | null | undefined
-): Option<PayloadImage> => {
+): PayloadImage | null => {
   if (!img) {
-    return Option.None();
+    return null;
   }
   const result = PayloadImageSchema.safeParse(img);
-  return result.success ? Option.Some(result.data) : Option.None();
+  return result.success ? result.data : null;
 };
 
 const from = (event: EventData): DetailedEventType => {

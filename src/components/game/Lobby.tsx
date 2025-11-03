@@ -7,6 +7,7 @@ const Lobby = () => {
   return (
     <div className="w-full h-full flex flex-col items-center justify-center">
       <h2 className="text-3xl font-bold text-center">Welcome to the Earlier or Later!</h2>
+      <h3>Find out which events happened on this date</h3>
       <p className="text-xl mt-4">Select the category to start the game.</p>
       <div className="grid grid-cols-3 gap-x-4">
         <button
