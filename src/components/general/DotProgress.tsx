@@ -16,23 +16,33 @@ type DotsProgressProps = {
 export default function DotsProgress({
   statuses,
   currentIndex = -1,
+  size,
+  gap,
   correctClass = "bg-emerald-500",
   incorrectClass = "bg-red-500",
-  noneClass = "bg-transparent border-2 border-black dark:border-white",
+  noneClass = "bg-transparent",
   emphasizeCurrent = true,
   ariaLabel = "Progress",
 }: DotsProgressProps) {
+  const style: React.CSSProperties & {
+    "--dot-size"?: string;
+    "--dot-gap"?: string;
+  } = {
+    ...(size ? { "--dot-size": `${size}px` } : {}),
+    ...(gap ? { "--dot-gap": `${gap}px` } : {}),
+  };
   return (
     <div
       role="group"
       aria-label={ariaLabel}
-      className={
-        "flex items-center select-none " +
-        "[--dot-size:8px] [--dot-gap:6px] " +
-        "sm:[--dot-size:10px] sm:[--dot-gap:8px] " +
-        "md:[--dot-size:12px] md:[--dot-gap:8px] " +
+      className={clsx(
+        "flex items-center select-none",
+        "[--dot-size:8px] [--dot-gap:6px]",
+        "sm:[--dot-size:10px] sm:[--dot-gap:8px]",
+        "md:[--dot-size:12px] md:[--dot-gap:8px]",
         "lg:[--dot-size:14px] lg:[--dot-gap:10px]"
-      }
+      )}
+      style={style}
     >
       {statuses.map((st, i) => {
         const isCurrent = i === currentIndex;
@@ -45,8 +55,8 @@ export default function DotsProgress({
 
         const dotClasses = clsx(
           base,
-          // width/height come from CSS var; spacing uses same var and last:mr-0 works
-          "w-[var(--dot-size)] h-[var(--dot-size)] mr-[var(--dot-gap)] last:mr-0",
+          "border-2 border-solid border-current text-[color:var(--text)]",
+          "w-2 h-2 w-[var(--dot-size)] h-[var(--dot-size)] mr-[var(--dot-gap)] last:mr-0",
           stateClasses,
           currentClasses
         );

@@ -1,4 +1,5 @@
 "use client";
+import GameResult from "@/components/game/GameResult";
 
 import {
   memo,
@@ -52,17 +53,17 @@ const CardSkeleton = () => (
   </div>
 );
 
-const GamePanelContent = memo(() => {
+const GamePanelContent = () => {
   const { gameStatus } = useSingleplayerGame();
   return (
     <div className="w-full h-full">
       {(gameStatus === "lobby" || gameStatus === "loading") && <Lobby />}
       {gameStatus === "ongoing" && <InnerPanel />}
       {gameStatus === "finished" && <GameResult />}
+
     </div>
   );
-});
-GamePanelContent.displayName = "GamePanelContent";
+}
 
 const InnerPanel: React.FC = () => {
   const {
@@ -355,15 +356,7 @@ const CardEventDate: React.FC<{
   );
 };
 
-const GameResult = () => {
-  const { points } = useSingleplayerGame();
-  return (
-    <div className="w-full h-full flex flex-col items-center justify-center">
-      <h2 className="text-3xl font-bold">Game Over!</h2>
-      <p className="text-xl mt-4">Your final score is: {points}</p>
-    </div>
-  );
-};
+
 
 const GamePanel: React.FC = () => {
   return (
