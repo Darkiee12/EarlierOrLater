@@ -1,7 +1,7 @@
 const Footer: React.FC = () => {
   return (
     <footer className="w-full text-center text-sm text-gray-500 dark:text-gray-400">
-      <div className="flex flex-col gap-2 max-w-3xl mx-auto px-4">
+      <div className="flex flex-col gap-1 mx-auto px-4">
         <p>
           Historical data sourced from{" "}
           <a 
@@ -16,8 +16,7 @@ const Footer: React.FC = () => {
         </p>
         <p className="text-xs">
           This game is an independent project and is not affiliated with, endorsed by, 
-          or sponsored by the Wikimedia Foundation or Wikipedia. 
-          All trademarks are the property of their respective owners.
+          or sponsored by the Wikimedia Foundation or Wikipedia. All trademarks are the property of their respective owners.
         </p>
       </div>
     </footer>

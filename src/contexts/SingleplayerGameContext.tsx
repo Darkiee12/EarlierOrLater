@@ -36,6 +36,7 @@ interface SingleplayerGameContextType {
   // Game State
   gameStatus: GameStatusType;
   points: number;
+  answers: Option<boolean>[];
   selectedId: Option<string>;
   earlier: boolean;
   nextGameReady: boolean;
@@ -101,6 +102,7 @@ export const SingleplayerGameProvider = ({
   // ---------------------------------------------------------------------------
   const [current, setCurrent] = useState<Option<number>>(Option.Some(0));
   const [points, setPoints] = useState<number>(0);
+  const [answers, setAnswers] = useState<Option<boolean>[]>([]);
   const [selectedId, setSelectedId] = useState<Option<string>>(Option.None());
   const [earlier, setEarlier] = useState<boolean>(true);
   const [revealReady, setRevealReady] = useState<boolean>(false);
@@ -197,6 +199,7 @@ export const SingleplayerGameProvider = ({
       (evs) => evs.length > 0 && gameStatus === "loading",
       (evs) => {
         setPartialEvents(evs);
+        setAnswers(Array(evs.length).fill(Option.None()));
         setGameStatus("ongoing");
         scoredRoundsRef.current = new Set();
         setRevealReady(false);
@@ -278,6 +281,17 @@ export const SingleplayerGameProvider = ({
 
                 if (isCorrect) {
                   setPoints((prevPoints) => prevPoints + 1);
+                  setAnswers((prevAnswers) => {
+                    const newAnswers = [...prevAnswers];
+                    newAnswers[current] = Option.Some(true);
+                    return newAnswers;
+                  });
+                } else{
+                  setAnswers((prevAnswers) => {
+                    const newAnswers = [...prevAnswers];
+                    newAnswers[current] = Option.Some(false);
+                    return newAnswers;
+                  });
                 }
 
                 GameEngine.markRoundAsScored(current, scoredRoundsRef.current);
@@ -345,6 +359,7 @@ export const SingleplayerGameProvider = ({
       date: today.date,
       selectedId,
       points,
+      answers,
       gameStatus,
       eventType,
       selectEventType,
@@ -359,6 +374,7 @@ export const SingleplayerGameProvider = ({
       current,
       selectedId,
       points,
+      answers,
       gameStatus,
       eventType,
       selectEventType,

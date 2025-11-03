@@ -5,7 +5,7 @@ const Lobby = () => {
   const isLoading = gameStatus === "loading";
   
   return (
-    <div className="flex flex-col items-center justify-center">
+    <div className="w-full h-full flex flex-col items-center justify-center">
       <h2 className="text-3xl font-bold text-center">Welcome to the Earlier or Later!</h2>
       <p className="text-xl mt-4">Select the category to start the game.</p>
       <div className="grid grid-cols-3 gap-x-4">
@@ -35,7 +35,7 @@ const Lobby = () => {
         </button>
       </div>
       {isLoading && (
-        <p className="text-lg mt-6 text-gray-600 dark:text-gray-400 animate-pulse">
+        <p className="mt-6 text-gray-600 dark:text-gray-400 animate-pulse">
           Getting events happening today...
         </p>
       )}
