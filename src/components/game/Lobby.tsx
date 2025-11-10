@@ -1,47 +1,73 @@
-import { useSingleplayerGame } from "@/contexts/SingleplayerGameContext";
+import { BaseGameContextType } from "@/contexts";
+import { BRAND_NAME } from "@/common/constants";
+import { useState, useEffect } from "react";
 
-const Lobby = () => {
-  const { selectEventType, gameStatus } = useSingleplayerGame();
+interface LobbyProps {
+  useGameContext: () => BaseGameContextType;
+  gameMode?: "daily" | "freeplay";
+}
+
+const Lobby = ({ useGameContext, gameMode = "daily" }: LobbyProps) => {
+  const { selectEventType, gameStatus } = useGameContext();
   const isLoading = gameStatus === "loading";
+  const [dotCount, setDotCount] = useState(0);
+
+  // Animate dots
+  useEffect(() => {
+    if (!isLoading) return;
+    
+    const interval = setInterval(() => {
+      setDotCount((prev) => (prev + 1) % 4);
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [isLoading]);
+
+  const loadingText = gameMode === "daily" 
+    ? "Getting events happening today" 
+    : "Getting random events";
   
   return (
     <div className="w-full h-full flex flex-col items-center justify-center">
-      <h2 className="text-3xl font-bold text-center mb-2">Welcome to Earlier or Later!</h2>
+      <h2 className="text-3xl font-bold text-center mb-2">Welcome to {BRAND_NAME}!</h2>
       <p className="text-lg mt-2 text-gray-700 dark:text-gray-300 text-center max-w-2xl">
         Test your history knowledge with today&apos;s events! Can you guess which historical moment came first?
       </p>
       <p className="text-xl mt-4 font-semibold">Select a category to start the game:</p>
-      <div className="grid grid-cols-3 gap-x-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-3xl px-4">
         <button
-          className="mt-4 px-4 py-2 bg-blue-500 hover:bg-blue-300 text-white rounded hover:cursor-pointer transition-all duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+          className="mt-4 px-6 py-3 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           type="button"
           onClick={() => selectEventType("event")}
           disabled={isLoading}
         >
-          Historical Events
+          📜 Historical Events
         </button>
         <button
-          className="mt-4 px-4 py-2 bg-blue-500 hover:bg-blue-300 text-white rounded hover:cursor-pointer transition-all duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+          className="mt-4 px-6 py-3 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl font-semibold text-lg shadow-lg opacity-50 cursor-not-allowed flex flex-col items-center gap-1"
           type="button"
-          onClick={() => selectEventType("birth")}
-          disabled={isLoading}
+          disabled
         >
-          Births
+          <span>👶 Births</span>
+          <span className="text-xs italic font-normal">Coming soon</span>
         </button>
         <button
-          className="mt-4 px-4 py-2 bg-blue-500 hover:bg-blue-300 text-white rounded hover:cursor-pointer transition-all duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+          className="mt-4 px-6 py-3 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl font-semibold text-lg shadow-lg opacity-50 cursor-not-allowed flex flex-col items-center gap-1"
           type="button"
-          onClick={() => selectEventType("death")}
-          disabled={isLoading}
+          disabled
         >
-          Deaths
+          <span>🕊️ Deaths</span>
+          <span className="text-xs italic font-normal">Coming soon</span>
         </button>
       </div>
-      {isLoading && (
-        <p className="mt-6 text-gray-600 dark:text-gray-400 animate-pulse">
-          Getting events happening today...
-        </p>
-      )}
+      <div className="mt-6 h-8 flex items-center justify-center">
+        {isLoading && (
+          <p className="text-gray-600 dark:text-gray-400">
+            <span className="animate-pulse font-bold">{loadingText}</span>
+            <span className="inline-block w-8 text-left">{".".repeat(dotCount)}</span>
+          </p>
+        )}
+      </div>
     </div>
   );
 };

@@ -113,6 +113,11 @@ export default class EventDateImpl implements EventDate {
     return new EventDateImpl(today.getDate(), today.getMonth() + 1);
   }
 
+  static fullToday(): { date: number; month: number; year: number } {
+    const today = new Date();
+    return { date: today.getDate(), month: today.getMonth() + 1, year: today.getFullYear() };
+  }
+
   toString(): string{
     return `${this.month}/${this.date}`;
   } 

@@ -1,5 +1,13 @@
-import { createClient, PostgrestError, SupabaseClient } from "@supabase/supabase-js";
-import { Database, EventData, EventType } from "@/lib/types/common/database.types";
+import {
+  createClient,
+  PostgrestError,
+  SupabaseClient,
+} from "@supabase/supabase-js";
+import {
+  Database,
+  EventData,
+  EventType,
+} from "@/lib/types/common/database.types";
 import Option from "@/lib/rust_prelude/option";
 import Result from "@/lib/rust_prelude/result";
 import EventDateImpl from "@/lib/types/events/eventdate";
@@ -51,20 +59,15 @@ class EventDatabase {
     }
     return this._instance;
   }
-  
 
   public async getCluster(
-    date: EventDateImpl,
     event_type: EventType,
     count: number,
     range?: number
   ): Promise<Result<EventData[], PostgrestError | NotFoundError>> {
-    const { data, error } = await this.supabase.rpc("random_cluster", {
-      p_day: date.date,
-      p_month: date.month,
+    const { data, error } = await this.supabase.rpc("random_cluster_v6", {
       p_event_type: event_type,
       p_num_items: count,
-      p_range: range,
     });
     if (error) {
       return Result.Err(error);
@@ -82,12 +85,18 @@ class EventDatabase {
   public async getEventById(
     eventId: string
   ): Promise<Result<EventData, PostgrestError | NotFoundError>> {
-    const { data, error} = await this.supabase.from("content").select("*").eq("id", eventId).single();
+    const { data, error } = await this.supabase
+      .from("content")
+      .select("*")
+      .eq("id", eventId)
+      .single();
     if (error) {
       return Result.Err(error);
     }
     if (!data) {
-      return Result.Err(new NotFoundError(`No event found with ID: ${eventId}`));
+      return Result.Err(
+        new NotFoundError(`No event found with ID: ${eventId}`)
+      );
     }
     return Result.Ok(data);
   }
@@ -110,6 +119,51 @@ class EventDatabase {
       );
     }
     return Result.Ok(data);
+  }
+
+  public async getPartialEventListFromDate(
+    day: number,
+    month: number,
+    event_type: EventType,
+    rows: number[],
+  ): Promise<Result<EventData[], PostgrestError | NotFoundError>> {  
+    const { data, error: dataError } = await this.supabase.rpc(
+      "get_events_by_row_numbers",
+      {
+        p_day: day,
+        p_month: month,
+        p_event_type: event_type,
+        p_indices: rows,
+      }
+    );
+
+    if (dataError) {
+      return Result.Err(dataError);
+    }
+
+    if (!data || data.length === 0) {
+      return Result.Err(
+        new NotFoundError(
+          `No events found for indices at day: ${day}, month: ${month}, event_type: ${event_type}`
+        )
+      );
+    }
+
+    return Result.Ok(data as EventData[]);
+  }
+
+  public async count(date: {day: number, month: number}, event_type: EventType): Promise<Result<number, PostgrestError>> {
+    const { count, error } = await this.supabase
+      .from("content")
+      .select("*", { count: "exact" })
+      .filter("month", "eq", date.month)
+      .filter("day", "eq", date.day)
+      .filter("event_type", "eq", event_type);
+      
+    if (error) {
+      return Result.Err(error);
+    }
+    return Result.Ok(count ?? 0);
   }
 
 }

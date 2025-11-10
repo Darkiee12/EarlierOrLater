@@ -32,7 +32,7 @@ export default function ThemeSwitcher() {
   }, []);
 
   return (
-    <div ref={ref} className="fixed top-3 left-3 z-50">
+    <div ref={ref} className="relative">
       <div className="relative">
         {/* Main Theme Button */}
         <button
@@ -58,7 +58,7 @@ export default function ThemeSwitcher() {
         {open && (
           <ul
             className={clsx(
-              "absolute left-0 mt-2 w-40 rounded-md shadow-lg border overflow-hidden backdrop-blur-sm transition-colors duration-200",
+              "absolute right-0 mt-2 w-40 rounded-md shadow-lg border overflow-hidden backdrop-blur-sm transition-colors duration-200 z-50",
               {
                 "bg-white/95 border-gray-200": theme === "light",
                 "bg-black/80 border-neutral-700": theme === "dark",

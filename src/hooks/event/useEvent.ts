@@ -11,11 +11,12 @@ type Payload = {
   eventType: EventType;
 }
 
-const useGetEventPairs = (day: number, month: number, eventType: EventType, enable = true) => {
+const useGetEventPairs = (day: number, month: number, year: number, eventType: EventType, enable = true) => {
   const queryKey = ["event_pairs", day.toString(), month.toString(), eventType];
   const params = new URLSearchParams({
     day: day.toString(),
     month: month.toString(),
+    year: year.toString(),
     eventType: eventType,
   });
   
@@ -56,6 +57,21 @@ const useGetDetailedEvents = (ids: string[], enable: boolean) => {
   );
 }
 
+const useGetRandomEvents = (eventType: EventType, enable = true) => {
+  const queryKey = ["random_events", eventType];
+  const params = new URLSearchParams({
+    eventType: eventType,
+  });
+  
+  return useGet<string, Pair<EventPayload>[]>(
+    queryKey,
+    {
+      url: `/api/event/random?${params.toString()}`,
+    },
+    enable
+  );
+};
 
-const EventService = { useGetEventPairs, usePostEvent, useGetDetailedEvents };
+
+const EventService = { useGetEventPairs, usePostEvent, useGetDetailedEvents, useGetRandomEvents };
 export default EventService;
