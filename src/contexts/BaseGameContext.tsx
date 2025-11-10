@@ -2,13 +2,9 @@
 import EventService from "@/hooks/event/useEvent";
 import { EventType } from "@/lib/types/common/database.types";
 import { EventPayload } from "@/lib/types/events/EventPayload";
-import EventDateImpl from "@/lib/types/events/eventdate";
 import { Pair } from "@/lib/types/common/pair";
 import {
-  createContext,
-  useContext,
   useState,
-  ReactNode,
   useEffect,
   useMemo,
   useCallback,
@@ -24,9 +20,9 @@ import { DetailedEventType } from "@/lib/types/events/DetailedEvent";
 // TYPES & INTERFACES
 // ============================================================================
 
-type GameStatusType = "loading" | "lobby" | "ongoing" | "finished";
+export type GameStatusType = "loading" | "lobby" | "ongoing" | "finished";
 
-interface SingleplayerGameContextType {
+export interface BaseGameContextType {
   // Game Data
   detailedEvents: Map<string, DetailedEventType>;
   currentPair: Option<Pair<EventPayload>>;
@@ -41,10 +37,7 @@ interface SingleplayerGameContextType {
   earlier: boolean;
   nextGameReady: boolean;
   resultYear: Option<number>;
-
-  // Game Info
-  month: number;
-  date: number;
+  resultEventId: Option<string>;
 
   // Actions
   selectEventType: (eventType: EventType) => void;
@@ -52,39 +45,22 @@ interface SingleplayerGameContextType {
   nextPair: () => void;
 }
 
-interface SingleplayerGameProviderProps {
-  children: ReactNode;
-}
-
 // ============================================================================
-// CONTEXT & HOOKS
+// BASE GAME HOOK
 // ============================================================================
 
-const SingleplayerGameContext = createContext<
-  SingleplayerGameContextType | undefined
->(undefined);
-
-export const useSingleplayerGame = () => {
-  const context = useContext(SingleplayerGameContext);
-  if (!context) {
-    throw new Error(
-      "useSingleplayerGame must be used within SingleplayerGameProvider"
-    );
-  }
-  return context;
-};
-
-// ============================================================================
-// PROVIDER COMPONENT
-// ============================================================================
-
-export const SingleplayerGameProvider = ({
-  children,
-}: SingleplayerGameProviderProps) => {
+/**
+ * Base game logic hook that can be used by both Daily and Free Play modes.
+ * 
+ * @param events - Option containing pairs of events from API
+ * @returns All game state and actions needed for gameplay
+ */
+export const useBaseGameLogic = (
+  events: Option<Pair<EventPayload>[]>
+) => {
   // ---------------------------------------------------------------------------
   // State - Game Configuration
   // ---------------------------------------------------------------------------
-  const [today] = useState(() => EventDateImpl.fullToday());
   const [eventType, setEventType] = useState<Option<EventType>>(Option.None());
   const [gameStatus, setGameStatus] = useState<GameStatusType>("lobby");
 
@@ -118,16 +94,8 @@ export const SingleplayerGameProvider = ({
   const { startTimers, clearTimers } = useGameTimer();
 
   // ---------------------------------------------------------------------------
-  // API Hooks
+  // Computed Values
   // ---------------------------------------------------------------------------
-  const { data: events } = EventService.useGetEventPairs(
-    today.date,
-    today.month,
-    today.year,
-    eventType.unwrapOr("event"),
-    eventType.isSome()
-  );
-
   const totalRound = useMemo(() => partialEvents.length, [partialEvents]);
 
   const currentIndex = current.unwrapOr(-1);
@@ -170,6 +138,12 @@ export const SingleplayerGameProvider = ({
     });
   }, [currentDetailPair, earlier]);
 
+  const resultEventId = useMemo(() => {
+    return currentDetailPair.map(([first, second]) => {
+      return ScoreCalculator.getResultEventId(first, second, earlier);
+    });
+  }, [currentDetailPair, earlier]);
+
   // ---------------------------------------------------------------------------
   // API Hooks (Dependent)
   // ---------------------------------------------------------------------------
@@ -200,6 +174,8 @@ export const SingleplayerGameProvider = ({
         setRevealReady(false);
         setEarlier(GameEngine.generateRandomBoolean());
         clearTimers();
+        setCurrent(Option.Some(0));
+        setPoints(0);
       }
     );
   }, [events, clearTimers, gameStatus]);
@@ -227,7 +203,6 @@ export const SingleplayerGameProvider = ({
       let changed = false;
       const newMap: Map<string, DetailedEventType> = new Map(prev);
       for (const ev of fetchedDetailEvents.unwrapOr([])) {
-        
         const existing = newMap.get(ev.id);
         if (!existing) {
           newMap.set(ev.id, ev);
@@ -281,7 +256,7 @@ export const SingleplayerGameProvider = ({
                     newAnswers[current] = Option.Some(true);
                     return newAnswers;
                   });
-                } else{
+                } else {
                   setAnswers((prevAnswers) => {
                     const newAnswers = [...prevAnswers];
                     newAnswers[current] = Option.Some(false);
@@ -337,54 +312,32 @@ export const SingleplayerGameProvider = ({
   }, [clearTimers]);
 
   // ---------------------------------------------------------------------------
-  // Context Value
+  // Update Ref
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
     detailedEventsRef.current = detailedEvents;
   }, [detailedEvents]);
 
-  const value: SingleplayerGameContextType = useMemo(
-    () => ({
-      detailedEvents: detailedEventsRef.current,
-      currentPair,
-      currentIndex: current,
-      month: today.month,
-      date: today.date,
-      selectedId,
-      points,
-      answers,
-      gameStatus,
-      eventType,
-      selectEventType,
-      handleCardClick,
-      nextPair,
-      nextGameReady: revealReady,
-      resultYear,
-      earlier,
-    }),
-    [
-      currentPair,
-      current,
-      selectedId,
-      points,
-      answers,
-      gameStatus,
-      eventType,
-      selectEventType,
-      handleCardClick,
-      nextPair,
-      revealReady,
-      resultYear,
-      today.month,
-      today.date,
-      earlier,
-    ]
-  );
+  // ---------------------------------------------------------------------------
+  // Return Values
+  // ---------------------------------------------------------------------------
 
-  return (
-    <SingleplayerGameContext.Provider value={value}>
-      {children}
-    </SingleplayerGameContext.Provider>
-  );
+  return {
+    detailedEvents: detailedEventsRef.current,
+    currentPair,
+    currentIndex: current,
+    selectedId,
+    points,
+    answers,
+    gameStatus,
+    eventType,
+    selectEventType,
+    handleCardClick,
+    nextPair,
+    nextGameReady: revealReady,
+    resultYear,
+    resultEventId,
+    earlier,
+  };
 };

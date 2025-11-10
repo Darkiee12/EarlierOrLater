@@ -10,16 +10,18 @@ import EventDatabaseInstance, {
 import { PostgrestError } from "@supabase/supabase-js";
 import { Pair } from "@/lib/types/common/pair";
 import EventPayloadImpl, { EventPayload } from "@/lib/types/events/EventPayload";
+import RNG from "@/services/server/util/rng";
 
 const db = EventDatabaseInstance;
 
 const count = 20;
 
-const getEventPairsForDate = async (date: EventDateImpl, eventType: EventType): Promise<Result<Pair<EventPayload>[], PostgrestError | NotFoundError | StaleDataError>> => {
-  const events = await db.getCluster(date, eventType, count);
+
+const getRandomEvents = async (eventType: EventType): Promise<Result<Pair<EventPayload>[], PostgrestError | NotFoundError | StaleDataError>> => {
+  const events = await db.getCluster(eventType, count);
   return events.match({
     Ok: (value) => {
-      const payload = new EventPayloadImpl(value);
+      const payload = new EventPayloadImpl(value.sort((a, b) => a.year - b.year));
       return Result.Ok(payload.pair());
     },
     Err: (err) => {
@@ -40,9 +42,42 @@ const getDetailEvents = async(ids: string[]): Promise<Result<EventData[], Postgr
   });
 };
 
+const getEventsByDate = async(date: {
+  day: number,
+  month: number
+  year: number
+}, eventType: EventType): Promise<Result<Pair<EventPayload>[], PostgrestError | NotFoundError | StaleDataError>> => {
+  return (await db.count({day: date.day, month: date.month}, eventType)).match({
+    Ok: async (count) => {
+      if(count === 0){
+        return Result.Err(new NotFoundError(`No events found for day: ${date.day}, month: ${date.month}, event_type: ${eventType}`));
+      }
+      const seed = RNG.generateSeedFromDate(`${date.day}${date.month}${date.year}`, 0, count);
+      const rows = RNG.generateDistinctIndices(seed, 1, count - 1, 20);
+      return (await db.getPartialEventListFromDate(date.day, date.month, eventType, rows)).match({
+        Ok: (data) => {
+          const payload = new EventPayloadImpl(data);
+          return Result.Ok(payload.pair());
+        },
+        Err: (err) => {
+          console.error(err);
+          return Result.Err(err);
+        }
+      });
+    },
+    Err: (err) => {
+      console.error(err);
+      return Result.Err(err);
+    }
+  })
+};
+
+
+
 const EventService = {
-  getEventPairsForDate,
+  getRandomEvents,
   getDetailEvents,
+  getEventsByDate,
 }
 
 export default EventService;
