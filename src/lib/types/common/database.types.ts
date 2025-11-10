@@ -141,6 +141,30 @@ export type Database = {
           year: number
         }[]
       }
+      get_events_by_row_numbers: {
+        Args: {
+          p_day: number
+          p_event_type: Database["events"]["Enums"]["event_type"]
+          p_indices: number[]
+          p_month: number
+        }
+        Returns: {
+          content_urls: Json
+          created_at: string
+          day: number
+          event_type: Database["events"]["Enums"]["event_type"]
+          extract: string
+          id: string
+          month: number
+          original_image: Json
+          text: string
+          thumbnail: Json
+          title: string
+          updated_at: string
+          wiki_metadata: Json
+          year: number
+        }[]
+      }
       insert_events: { Args: { p_events: Json }; Returns: undefined }
       random_cluster: {
         Args: {
@@ -164,6 +188,36 @@ export type Database = {
           wiki_metadata: Json
           year: number
         }[]
+      }
+      random_cluster_v6: {
+        Args: {
+          p_bucket_jitter?: number
+          p_event_type: Database["events"]["Enums"]["event_type"]
+          p_num_items: number
+          p_pair_gap?: number
+        }
+        Returns: {
+          content_urls: Json
+          created_at: string | null
+          day: number
+          event_type: Database["events"]["Enums"]["event_type"]
+          extract: string
+          id: string
+          month: number
+          original_image: Json | null
+          text: string
+          thumbnail: Json | null
+          title: string
+          updated_at: string | null
+          wiki_metadata: Json
+          year: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "content"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
     }
     Enums: {

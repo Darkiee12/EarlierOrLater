@@ -15,6 +15,7 @@ export const fetchCache = "force-no-store";
 const dateQuerySchema = z.object({
   day: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().min(1).max(31)),
   month: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().min(1).max(12)),
+  year: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().min(0).max(9999)),
   eventType: z.enum(["event", "birth", "death"]).optional(),
 });
 
@@ -22,11 +23,13 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiResult<
   const searchParams = request.nextUrl.searchParams;
   const day = searchParams.get("day");
   const month = searchParams.get("month");
+  const year = searchParams.get("year");
   const eventType = searchParams.get("eventType");
 
   const validationResult = dateQuerySchema.safeParse({
     day,
     month,
+    year,
     eventType: eventType || undefined,
   });
 
@@ -43,14 +46,14 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiResult<
     );
   }
 
-  const { day: validDay, month: validMonth, eventType: validEventType } = validationResult.data;
+  const { day: validDay, month: validMonth, year: validYear, eventType: validEventType } = validationResult.data;
 
   const eventDateResult = EventDateImpl.fromNumber(validMonth, validDay);
   
   return eventDateResult.match({
     Ok: async (eventDate) => {
       const typeToUse = validEventType || "event";
-      const pairsResult = await EventService.getEventPairsForDate(eventDate, typeToUse);
+      const pairsResult = await EventService.getEventsByDate({ day: validDay, month: validMonth, year: validYear }, typeToUse);
       
       return pairsResult.match({
         Ok: (pairs) =>

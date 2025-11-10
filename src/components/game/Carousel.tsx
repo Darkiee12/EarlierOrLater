@@ -12,6 +12,9 @@ import { monthNames } from "@/lib/types/events/eventdate";
 import Image from "next/image";
 import Option from "@/lib/rust_prelude/option";
 import { FaExternalLinkAlt } from "react-icons/fa";
+
+const formatYear = (y: number) => (y > 0 ? `${y}` : `${Math.abs(y)} BC`);
+
 type PropType = {
   slides: DetailedEventType[];
   options?: EmblaOptionsType;
@@ -74,7 +77,7 @@ const Carousel: React.FC<PropType> = (props) => {
                       <div className="w-1/2 h-full px-1 flex flex-col">
                         <p className="text-xs py-1">{`${
                           monthNames[event.month]
-                        } ${event.day}, ${event.year}`}</p>
+                        } ${event.day}, ${formatYear(event.year)}`}</p>
                         <p className="text-lg font-bold text-center">
                           {event.title}
                         </p>

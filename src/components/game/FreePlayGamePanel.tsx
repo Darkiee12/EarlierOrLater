@@ -2,38 +2,20 @@
 import GameResult from "@/components/game/GameResult";
 import { FaLongArrowAltRight } from "react-icons/fa";
 import Option from "@/lib/rust_prelude/option";
-import { DailyGameProvider, useDailyGame } from "@/contexts";
+import { FreePlayGameProvider, useFreePlayGame } from "@/contexts";
 import Lobby from "@/components/game/Lobby";
 import { DetailedEventType } from "@/lib/types/events/DetailedEvent";
 import DotsProgress from "@/components/general/DotProgress";
 import GameCard from "@/components/game/GameCard";
 import { useCallback, useMemo } from "react";
 
-const GamePanelContent = () => {
-  const { gameStatus, currentStreak, bestStreak, month, date } = useDailyGame();
-  
-  // Format date for sharing (e.g., "November 11, 2025")
-  const gameDate = useMemo(() => {
-    const monthNames = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
-    ];
-    return `${monthNames[month - 1]} ${date}`;
-  }, [month, date]);
-
+const FreePlayGamePanelContent = () => {
+  const { gameStatus } = useFreePlayGame();
   return (
     <div className="w-full h-full">
-      {(gameStatus === "lobby" || gameStatus === "loading") && <Lobby useGameContext={useDailyGame} gameMode="daily" />}
+      {(gameStatus === "lobby" || gameStatus === "loading") && <Lobby useGameContext={useFreePlayGame} gameMode="freeplay" />}
       {gameStatus === "ongoing" && <InnerPanel />}
-      {gameStatus === "finished" && (
-        <GameResult 
-          useGameContext={useDailyGame} 
-          showStreak={true}
-          currentStreak={currentStreak}
-          bestStreak={bestStreak}
-          gameDate={gameDate}
-        />
-      )}
+      {gameStatus === "finished" && <GameResult useGameContext={useFreePlayGame} />}
     </div>
   );
 };
@@ -46,8 +28,6 @@ const InnerPanel: React.FC = () => {
     nextPair,
     nextGameReady,
     detailedEvents,
-    month,
-    date,
     resultYear,
     resultEventId,
     earlier,
@@ -55,7 +35,7 @@ const InnerPanel: React.FC = () => {
     selectedId,
     handleCardClick,
     answers,
-  } = useDailyGame();
+  } = useFreePlayGame();
 
   const firstEvent = useMemo(
     () => currentPair.map((pair) => pair.first),
@@ -88,6 +68,7 @@ const InnerPanel: React.FC = () => {
   const onContinue = useCallback(() => {
     nextPair();
   }, [nextPair]);
+
   return (
     <div className="w-full h-full flex flex-col">
       <div className="flex-shrink-0 flex-grow-0 flex flex-col justify-between items-center mb-4">
@@ -126,7 +107,7 @@ const InnerPanel: React.FC = () => {
           resultEventId={resultEventId}
           nextGameReady={nextGameReady}
           selectedId={selectedId}
-          useGameContext={useDailyGame}
+          useGameContext={useFreePlayGame}
         />
         <GameCard
           event={secondEvent}
@@ -136,7 +117,7 @@ const InnerPanel: React.FC = () => {
           resultEventId={resultEventId}
           nextGameReady={nextGameReady}
           selectedId={selectedId}
-          useGameContext={useDailyGame}
+          useGameContext={useFreePlayGame}
         />
       </div>
       <div className="w-full flex-shrink-0 flex-grow-0 flex items-center justify-around py-1 h-[52px]">
@@ -161,12 +142,12 @@ const InnerPanel: React.FC = () => {
   );
 };
 
-const GamePanel: React.FC = () => {
+const FreePlayGamePanel: React.FC = () => {
   return (
-    <DailyGameProvider>
-      <GamePanelContent />
-    </DailyGameProvider>
+    <FreePlayGameProvider>
+      <FreePlayGamePanelContent />
+    </FreePlayGameProvider>
   );
 };
 
-export default GamePanel;
+export default FreePlayGamePanel;
