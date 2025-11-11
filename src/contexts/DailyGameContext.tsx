@@ -11,7 +11,7 @@ import {
   useEffect,
 } from "react";
 import { BaseGameContextType, useBaseGameLogic } from "./BaseGameContext";
-import StreakService from "@/services/client/game/StreakService";
+import GameResultService from "@/services/client/game/GameResultService";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -24,6 +24,8 @@ interface DailyGameContextType extends BaseGameContextType {
   // Streak Info
   currentStreak: number;
   bestStreak: number;
+  // Already Played Info
+  alreadyPlayed: boolean;
 }
 
 interface DailyGameProviderProps {
@@ -58,14 +60,32 @@ export const DailyGameProvider = ({ children }: DailyGameProviderProps) => {
   const [eventType, setEventType] = useState<EventType | undefined>(undefined);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [bestStreak, setBestStreak] = useState(0);
+  const [alreadyPlayed, setAlreadyPlayed] = useState(false);
 
   // ---------------------------------------------------------------------------
-  // Initialize streak data
+  // Initialize streak data and check if already played
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    const streakData = StreakService.getStreakData();
-    setCurrentStreak(StreakService.getCurrentStreak());
-    setBestStreak(streakData.bestStreak);
+    const initializeStreakData = async () => {
+      const streakDataResult = await GameResultService.getStreakData();
+      streakDataResult.match({
+        Ok: (streakData) => {
+          setCurrentStreak(streakData.currentStreak);
+          setBestStreak(streakData.bestStreak);
+        },
+        Err: (error) => {
+          console.error("Error loading streak data:", error);
+        },
+      });
+
+      const hasPlayedResult = await GameResultService.hasPlayedToday();
+      hasPlayedResult.match({
+        Ok: (hasPlayed) => setAlreadyPlayed(hasPlayed),
+        Err: (error) => console.error("Error checking if played today:", error),
+      });
+    };
+
+    initializeStreakData();
   }, []);
 
   // ---------------------------------------------------------------------------
@@ -91,15 +111,33 @@ export const DailyGameProvider = ({ children }: DailyGameProviderProps) => {
   }, [baseGame.eventType, eventType]);
 
   // ---------------------------------------------------------------------------
-  // Update streak when game finishes
+  // Save game result when game finishes
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    if (baseGame.gameStatus === "finished" && !StreakService.hasPlayedToday()) {
-      const updatedStreak = StreakService.updateStreak();
-      setCurrentStreak(updatedStreak.currentStreak);
-      setBestStreak(updatedStreak.bestStreak);
-    }
-  }, [baseGame.gameStatus]);
+    const saveGameResult = async () => {
+      if (baseGame.gameStatus === "finished" && !alreadyPlayed) {
+        const results = baseGame.answers.map((opt) => opt.unwrapOr(false));
+
+        const saveResult = await GameResultService.saveGameResult(
+          results,
+          baseGame.points
+        );
+
+        saveResult.match({
+          Ok: (updatedStreak) => {
+            setCurrentStreak(updatedStreak.currentStreak);
+            setBestStreak(updatedStreak.bestStreak);
+            setAlreadyPlayed(true);
+          },
+          Err: (error) => {
+            console.error("Error saving game result:", error);
+          },
+        });
+      }
+    };
+
+    saveGameResult();
+  }, [baseGame.gameStatus, baseGame.answers, baseGame.points, alreadyPlayed]);
 
   // ---------------------------------------------------------------------------
   // Context Value
@@ -112,8 +150,9 @@ export const DailyGameProvider = ({ children }: DailyGameProviderProps) => {
       date: today.date,
       currentStreak,
       bestStreak,
+      alreadyPlayed,
     }),
-    [baseGame, today.month, today.date, currentStreak, bestStreak]
+    [baseGame, today.month, today.date, currentStreak, bestStreak, alreadyPlayed]
   );
 
   return (
