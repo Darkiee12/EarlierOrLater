@@ -47,7 +47,7 @@ const GameCard: React.FC<{
       return detailedEvent.match({
         Some: (de) => resultEventId.match({
           Some: (id) => de.id === id,
-          None: () => false,
+          None: () => true, // If resultEventId is None, it's a tie - both are correct
         }),
         None: () => false,
       });

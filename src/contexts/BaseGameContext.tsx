@@ -132,15 +132,17 @@ export const useBaseGameLogic = (
     });
   }, [currentPair, detailedEvents]);
 
-  const resultYear = useMemo(() => {
-    return currentDetailPair.map(([first, second]) => {
-      return ScoreCalculator.getResultYear(first, second, earlier);
+  const resultYear: Option<number> = useMemo(() => {
+    return currentDetailPair.andThen(([first, second]): Option<number> => {
+      const year = ScoreCalculator.getResultYear(first, second, earlier);
+      return year !== null ? Option.Some(year) : Option.None();
     });
   }, [currentDetailPair, earlier]);
 
-  const resultEventId = useMemo(() => {
-    return currentDetailPair.map(([first, second]) => {
-      return ScoreCalculator.getResultEventId(first, second, earlier);
+  const resultEventId: Option<string> = useMemo(() => {
+    return currentDetailPair.andThen(([first, second]): Option<string> => {
+      const id = ScoreCalculator.getResultEventId(first, second, earlier);
+      return id !== null ? Option.Some(id) : Option.None();
     });
   }, [currentDetailPair, earlier]);
 
