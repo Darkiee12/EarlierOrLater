@@ -41,9 +41,9 @@ const Navbar = () => {
           </button>
 
           <Link href="/" className="no-underline absolute left-1/2 transform -translate-x-1/2">
-            <h1 className="text-2xl font-bold hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+            <div className="text-2xl font-bold hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
               {BRAND_NAME}
-            </h1>
+            </div>
           </Link>
 
           <div className="flex items-center">

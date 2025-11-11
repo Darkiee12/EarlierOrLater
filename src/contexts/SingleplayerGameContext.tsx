@@ -164,9 +164,10 @@ export const SingleplayerGameProvider = ({
     });
   }, [currentPair, detailedEvents]);
 
-  const resultYear = useMemo(() => {
-    return currentDetailPair.map(([first, second]) => {
-      return ScoreCalculator.getResultYear(first, second, earlier);
+  const resultYear: Option<number> = useMemo(() => {
+    return currentDetailPair.andThen(([first, second]) => {
+      const year = ScoreCalculator.getResultYear(first, second, earlier);
+      return year !== null ? Option.Some(year) : Option.None();
     });
   }, [currentDetailPair, earlier]);
 

@@ -43,13 +43,23 @@ const TodayDate = memo(() => {
   const [dateStr, setDateStr] = useState("");
 
   useEffect(() => {
-    const now = new Date();
-    const options: Intl.DateTimeFormatOptions = { 
-      month: "long", 
-      day: "numeric", 
-      year: "numeric" 
+    const updateDate = () => {
+      const now = new Date();
+      const options: Intl.DateTimeFormatOptions = { 
+        month: "long", 
+        day: "numeric", 
+        year: "numeric" 
+      };
+      setDateStr(now.toLocaleDateString("en-US", options));
     };
-    setDateStr(now.toLocaleDateString("en-US", options));
+
+    updateDate();
+
+    const interval = setInterval(() => {
+      updateDate();
+    }, 60000);
+
+    return () => clearInterval(interval);
   }, []);
 
   return (

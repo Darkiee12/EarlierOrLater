@@ -88,6 +88,15 @@ export default class Result<T, E> {
     }
   }
 
+  $(): T {
+    switch(this.result.tag) {
+      case "ok":
+        return this.result.value;
+      case "err":
+        throw this.result.value;
+    }
+  }
+
   unwrapOr(defaultValue: T): T {
     switch (this.result.tag) {
       case "ok":

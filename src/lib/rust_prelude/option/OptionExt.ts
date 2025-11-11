@@ -129,7 +129,7 @@ const ifSome5 = <T1, T2, T3, T4, T5>({
   });
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type UnwrapOptions<T extends readonly any[]> = {
   [K in keyof T]: T[K] extends IntoOption<infer U> ? U : never;
 };
@@ -138,7 +138,7 @@ const ifSomeN = <T extends readonly IntoOption<unknown>[]>(
   options: [...T],
   handler: (...values: UnwrapOptions<T>) => void
 ): void => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const unwrapped: any[] = [];
 
   for (const opt of options) {

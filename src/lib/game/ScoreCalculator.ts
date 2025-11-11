@@ -54,15 +54,20 @@ export class ScoreCalculator {
    * @param firstEvent - First event in the pair
    * @param secondEvent - Second event in the pair
    * @param shouldPickEarlier - Whether the user should pick the earlier event
-   * @returns The event ID that should be highlighted as correct
+   * @returns The event ID that should be highlighted as correct, or null for ties
    */
   static getResultEventId(
     firstEvent: DetailedEventType,
     secondEvent: DetailedEventType,
     shouldPickEarlier: boolean
-  ): string {
+  ): string | null {
     const firstTimestamp = this.eventToTimestamp(firstEvent);
     const secondTimestamp = this.eventToTimestamp(secondEvent);
+    
+    // If it's a tie, return null to indicate both are correct
+    if (firstTimestamp === secondTimestamp) {
+      return null;
+    }
     
     if (shouldPickEarlier) {
       return firstTimestamp < secondTimestamp ? firstEvent.id : secondEvent.id;
@@ -76,15 +81,20 @@ export class ScoreCalculator {
    * @param firstEvent - First event in the pair
    * @param secondEvent - Second event in the pair
    * @param shouldPickEarlier - Whether the user should pick the earlier event
-   * @returns The year that should be highlighted as correct
+   * @returns The year that should be highlighted as correct, or null for ties
    */
   static getResultYear(
     firstEvent: DetailedEventType,
     secondEvent: DetailedEventType,
     shouldPickEarlier: boolean
-  ): number {
+  ): number | null {
     const firstTimestamp = this.eventToTimestamp(firstEvent);
     const secondTimestamp = this.eventToTimestamp(secondEvent);
+    
+    // If it's a tie, return null to indicate both are correct
+    if (firstTimestamp === secondTimestamp) {
+      return null;
+    }
     
     return shouldPickEarlier 
       ? (firstTimestamp < secondTimestamp ? firstEvent.year : secondEvent.year)

@@ -9,30 +9,30 @@ import {
   ReactNode,
   useMemo,
   useEffect,
+  useCallback,
 } from "react";
 import { BaseGameContextType, useBaseGameLogic } from "./BaseGameContext";
-import StreakService from "@/services/client/game/StreakService";
-
-// ============================================================================
-// TYPES & INTERFACES
-// ============================================================================
+import GameResultService from "@/services/client/game/GameResultService";
 
 interface DailyGameContextType extends BaseGameContextType {
-  // Game Info
   month: number;
   date: number;
-  // Streak Info
   currentStreak: number;
   bestStreak: number;
+  alreadyPlayed: boolean;
+  isCheckingPlayedStatus: boolean;
+  savedGameData: {
+    points: number;
+    events: any[];
+    answers: boolean[];
+  } | null;
+  showSavedResult: boolean;
+  loadSavedResult: () => void;
 }
 
 interface DailyGameProviderProps {
   children: ReactNode;
 }
-
-// ============================================================================
-// CONTEXT & HOOKS
-// ============================================================================
 
 const DailyGameContext = createContext<DailyGameContextType | undefined>(
   undefined
@@ -46,31 +46,78 @@ export const useDailyGame = () => {
   return context;
 };
 
-// ============================================================================
-// PROVIDER COMPONENT
-// ============================================================================
-
 export const DailyGameProvider = ({ children }: DailyGameProviderProps) => {
-  // ---------------------------------------------------------------------------
-  // State - Game Configuration
-  // ---------------------------------------------------------------------------
+  // Game state
   const [today] = useState(() => EventDateImpl.fullToday());
   const [eventType, setEventType] = useState<EventType | undefined>(undefined);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [bestStreak, setBestStreak] = useState(0);
+  const [alreadyPlayed, setAlreadyPlayed] = useState(false);
+  const [isCheckingPlayedStatus, setIsCheckingPlayedStatus] = useState(true);
+  const [savedGameData, setSavedGameData] = useState<{
+    points: number;
+    events: any[];
+    answers: boolean[];
+  } | null>(null);
+  
+  // UI-related state
+  const [showSavedResult, setShowSavedResult] = useState(false);
 
-  // ---------------------------------------------------------------------------
-  // Initialize streak data
-  // ---------------------------------------------------------------------------
-  useEffect(() => {
-    const streakData = StreakService.getStreakData();
-    setCurrentStreak(StreakService.getCurrentStreak());
-    setBestStreak(streakData.bestStreak);
+  const loadSavedGameData = useCallback(async () => {
+    const recordResult = await GameResultService.getTodayGameRecord();
+    recordResult.match({
+      Ok: (record) => {
+        if (record && record.events) {
+          try {
+            const events = JSON.parse(record.events);
+            setSavedGameData({
+              points: record.score,
+              events,
+              answers: record.results,
+            });
+          } catch (error) {
+            console.error("Error parsing saved events:", error);
+          }
+        }
+      },
+      Err: (error) => console.error("Error loading saved game data:", error),
+    });
   }, []);
 
-  // ---------------------------------------------------------------------------
-  // API Hooks - Daily Mode: Fetch events by specific date
-  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    const initializeStreakData = async () => {
+      setIsCheckingPlayedStatus(true);
+      
+      const streakDataResult = await GameResultService.getStreakData();
+      streakDataResult.match({
+        Ok: (streakData) => {
+          setCurrentStreak(streakData.currentStreak);
+          setBestStreak(streakData.bestStreak);
+        },
+        Err: (error) => {
+          console.error("Error loading streak data:", error);
+        },
+      });
+
+      const hasPlayedResult = await GameResultService.hasPlayedToday();
+      hasPlayedResult.match({
+        Ok: (hasPlayed) => {
+          setAlreadyPlayed(hasPlayed);
+          if (hasPlayed) {
+            loadSavedGameData();
+          }
+          setIsCheckingPlayedStatus(false);
+        },
+        Err: (error) => {
+          console.error("Error checking if played today:", error);
+          setIsCheckingPlayedStatus(false);
+        },
+      });
+    };
+
+    initializeStreakData();
+  }, [loadSavedGameData]);
+
   const { data: events } = EventService.useGetEventPairs(
     today.date,
     today.month,
@@ -81,7 +128,6 @@ export const DailyGameProvider = ({ children }: DailyGameProviderProps) => {
 
   const baseGame = useBaseGameLogic(events);
 
-  // Sync event type from base game back to local state
   useMemo(() => {
     baseGame.eventType.ifSome((et) => {
       if (et !== eventType) {
@@ -90,20 +136,64 @@ export const DailyGameProvider = ({ children }: DailyGameProviderProps) => {
     });
   }, [baseGame.eventType, eventType]);
 
-  // ---------------------------------------------------------------------------
-  // Update streak when game finishes
-  // ---------------------------------------------------------------------------
   useEffect(() => {
-    if (baseGame.gameStatus === "finished" && !StreakService.hasPlayedToday()) {
-      const updatedStreak = StreakService.updateStreak();
-      setCurrentStreak(updatedStreak.currentStreak);
-      setBestStreak(updatedStreak.bestStreak);
-    }
-  }, [baseGame.gameStatus]);
+    const saveGameResult = async () => {
+      if (baseGame.gameStatus === "finished" && !alreadyPlayed) {
+        const results = baseGame.answers.map((opt) => opt.unwrapOr(false));
+        const allEvents = Array.from(baseGame.detailedEvents.values());
 
-  // ---------------------------------------------------------------------------
-  // Context Value
-  // ---------------------------------------------------------------------------
+        const saveResult = await GameResultService.saveGameResult(
+          results,
+          baseGame.points,
+          allEvents
+        );
+
+        saveResult.match({
+          Ok: (updatedStreak) => {
+            setCurrentStreak(updatedStreak.currentStreak);
+            setBestStreak(updatedStreak.bestStreak);
+            setAlreadyPlayed(true);
+          },
+          Err: (error) => {
+            console.error("Error saving game result:", error);
+          },
+        });
+      }
+    };
+
+    saveGameResult();
+  }, [baseGame.gameStatus, baseGame.answers, baseGame.points, baseGame.detailedEvents, alreadyPlayed]);
+
+  const loadSavedResult = useCallback(async () => {
+    if (!alreadyPlayed) return;
+    
+    const recordResult = await GameResultService.getTodayGameRecord();
+    recordResult.match({
+      Ok: (record) => {
+        if (record && record.events) {
+          try {
+            const events = JSON.parse(record.events);
+            setSavedGameData({
+              points: record.score,
+              events,
+              answers: record.results,
+            });
+            setShowSavedResult(true);
+          } catch (error) {
+            console.error("Error parsing saved events:", error);
+          }
+        } else if (record) {
+          setSavedGameData({
+            points: record.score,
+            events: [],
+            answers: record.results,
+          });
+          setShowSavedResult(true);
+        }
+      },
+      Err: (error) => console.error("Error loading saved game data:", error),
+    });
+  }, [alreadyPlayed]);
 
   const value: DailyGameContextType = useMemo(
     () => ({
@@ -112,8 +202,13 @@ export const DailyGameProvider = ({ children }: DailyGameProviderProps) => {
       date: today.date,
       currentStreak,
       bestStreak,
+      alreadyPlayed,
+      isCheckingPlayedStatus,
+      savedGameData,
+      showSavedResult,
+      loadSavedResult,
     }),
-    [baseGame, today.month, today.date, currentStreak, bestStreak]
+    [baseGame, today.month, today.date, currentStreak, bestStreak, alreadyPlayed, isCheckingPlayedStatus, savedGameData, showSavedResult, loadSavedResult]
   );
 
   return (

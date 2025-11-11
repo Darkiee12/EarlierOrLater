@@ -3,7 +3,6 @@ import { DailyChallengeTimer } from "@/components/game/DailyChallengeTimer";
 
 
 export const DailyChallengeCard = () => {
-  // Server-side render the static parts
   const now = new Date();
   const options: Intl.DateTimeFormatOptions = { 
     month: "long", 
@@ -12,7 +11,6 @@ export const DailyChallengeCard = () => {
   };
   const dateStr = now.toLocaleDateString("en-US", options);
 
-  // Calculate time left for SSR fallback (will be updated by client component)
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
   tomorrow.setHours(0, 0, 0, 0);
@@ -37,7 +35,6 @@ export const DailyChallengeCard = () => {
         <p className="text-gray-700 dark:text-gray-300 mt-2">
           Play with events that happened on this date in history
         </p>
-        {/* SSR fallback - will be replaced by client component if JS is enabled */}
         <noscript>
           <div className="text-white font-mono text-sm mt-2">
             {fallbackTime} left

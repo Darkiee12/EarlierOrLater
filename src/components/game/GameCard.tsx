@@ -32,13 +32,11 @@ const GameCard: React.FC<{
     event,
     detailedEvent,
     handleCardClick,
-    resultYear,
     resultEventId,
     nextGameReady,
     selectedId,
-    useGameContext,
   }) => {
-    const { theme } = useContext(ThemeContext);
+    const { resolvedTheme } = useContext(ThemeContext);
 
     const hasDetailedEvent = detailedEvent.isSome();
     const hasSelectedId = selectedId.isSome();
@@ -47,7 +45,7 @@ const GameCard: React.FC<{
       return detailedEvent.match({
         Some: (de) => resultEventId.match({
           Some: (id) => de.id === id,
-          None: () => false,
+          None: () => true, // If resultEventId is None, it's a tie - both are correct
         }),
         None: () => false,
       });
@@ -74,7 +72,7 @@ const GameCard: React.FC<{
     }, [event, handleCardClick]);
 
     const defaultBorderColor = useMemo(() => {
-      switch (theme) {
+      switch (resolvedTheme) {
         case "light":
           return "border-gray-800";
         case "dark":
@@ -84,7 +82,7 @@ const GameCard: React.FC<{
         default:
           return "border-gray-800";
       }
-    }, [theme]);
+    }, [resolvedTheme]);
 
     const getImageSrc = () =>
       event.andThen((e) => Option.into(e.thumbnail?.source));
@@ -92,7 +90,7 @@ const GameCard: React.FC<{
     return (
       <button
         type="button"
-        className={`border-4 rounded-xl px-2 w-full max-w-[800px] relative ${
+        className={`border-4 rounded-xl px-2 w-full max-w-[800px] h-[280px] sm:h-[180px] md:h-[200px] lg:h-[220px] relative overflow-y-auto ${
           showBorderColor
             ? isCorrectEvent
               ? "border-green-500"

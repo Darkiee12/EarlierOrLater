@@ -33,11 +33,11 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
-      <main className="flex-1 min-h-0 flex flex-col items-center justify-start px-4 py-6">
-        <div className="w-full max-w-4xl h-full flex flex-col items-center justify-center gap-8 py-8">
-          <div className="text-center">
-            <h1 className="text-5xl font-bold mb-4">{BRAND_NAME}</h1>
-            <p className="text-lg text-gray-700 dark:text-gray-300 max-w-2xl mx-auto mb-2">
+      <main className="flex-1 min-h-0 flex flex-col items-center justify-start px-4 py-6 overflow-y-auto">
+        <div className="w-full max-w-4xl flex flex-col items-center gap-8 py-8 pb-16">
+          <div className="text-center mt-4">
+            <h1 className="text-4xl sm:text-5xl font-bold mb-4">{BRAND_NAME}</h1>
+            <p className="text-base sm:text-lg text-gray-700 dark:text-gray-300 max-w-2xl mx-auto mb-2">
               Test your knowledge of historical events with our daily timeline game
             </p>
           </div>
@@ -47,7 +47,7 @@ export default function Home() {
 
             <Link
               href="/free"
-              className="group relative overflow-hidden rounded-2xl border-4 border-green-500 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900 dark:to-green-800 p-8 hover:scale-105 transition-transform duration-200 ease-in-out shadow-lg hover:shadow-xl"
+              className="group relative rounded-2xl border-4 border-green-500 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900 dark:to-green-800 p-8 hover:scale-105 transition-transform duration-200 ease-in-out shadow-lg hover:shadow-xl"
             >
               <div className="flex flex-col items-center justify-center text-center">
                 <div className="text-5xl mb-4">🎮</div>
@@ -61,8 +61,8 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="text-center text-sm text-gray-600 dark:text-gray-400 max-w-2xl">
-            <p className="mb-4">
+          <div className="text-center text-sm text-gray-600 dark:text-gray-400 max-w-2xl mb-8">
+            <p>
               Choose your preferred mode and select a category to start playing. 
               Can you master the timeline of history?
             </p>
