@@ -8,16 +8,18 @@ const LABELS: Record<string, string> = {
   light: "Light",
   dark: "Dark",
   pink: "Pink",
+  system: "System",
 };
 
 const ICONS: Record<string, string> = {
   light: "🌞",
   dark: "🌙",
   pink: "💖",
+  system: "💻",
 };
 
 export default function ThemeSwitcher() {
-  const { theme, setTheme, heartsEnabled, setHeartsEnabled } =
+  const { theme, resolvedTheme, setTheme, heartsEnabled, setHeartsEnabled } =
     useContext(ThemeContext);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
@@ -42,10 +44,10 @@ export default function ThemeSwitcher() {
           className={clsx(
             "flex items-center gap-2 px-3 py-2 rounded-md shadow-md border transition-colors duration-200",
             {
-              "bg-white text-gray-800 border-gray-200": theme === "light",
-              "bg-neutral-900 text-white border-neutral-700": theme === "dark",
+              "bg-white text-gray-800 border-gray-200": resolvedTheme === "light",
+              "bg-neutral-900 text-white border-neutral-700": resolvedTheme === "dark",
               "bg-pink-500 text-white border-pink-400 hover:bg-pink-600":
-                theme === "pink",
+                resolvedTheme === "pink",
             },
           )}
         >
@@ -60,13 +62,13 @@ export default function ThemeSwitcher() {
             className={clsx(
               "absolute right-0 mt-2 w-40 rounded-md shadow-lg border overflow-hidden backdrop-blur-sm transition-colors duration-200 z-50",
               {
-                "bg-white/95 border-gray-200": theme === "light",
-                "bg-black/80 border-neutral-700": theme === "dark",
-                "bg-pink-100 border-pink-400": theme === "pink",
+                "bg-white/95 border-gray-200": resolvedTheme === "light",
+                "bg-black/80 border-neutral-700": resolvedTheme === "dark",
+                "bg-pink-100 border-pink-400": resolvedTheme === "pink",
               },
             )}
           >
-            {(["light", "dark", "pink"] as const).map((t) => (
+            {(["light", "dark", "pink", "system"] as const).map((t) => (
               <li key={t}>
                 <button
                   onClick={() => {
@@ -76,9 +78,9 @@ export default function ThemeSwitcher() {
                   className={clsx(
                     "w-full text-left px-3 py-2 flex items-center gap-2 transition-colors duration-150",
                     {
-                      "hover:bg-gray-100": theme === "light",
-                      "hover:bg-neutral-800": theme === "dark",
-                      "hover:bg-pink-200": theme === "pink",
+                      "hover:bg-gray-100": resolvedTheme === "light",
+                      "hover:bg-neutral-800": resolvedTheme === "dark",
+                      "hover:bg-pink-200": resolvedTheme === "pink",
                     },
                   )}
                 >

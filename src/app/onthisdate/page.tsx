@@ -1,17 +1,48 @@
-import GamePanel from "@/components/game/GamePanel";
-import type { Metadata } from "next";
-import { BRAND_NAME } from "@/common/constants";
+"use client";
+import GameResult from "@/components/game/GameResult";
+import { DailyGameProvider, useDailyGame } from "@/contexts";
+import Lobby from "@/components/game/Lobby";
+import GameInnerPanel from "@/components/game/GameInnerPanel";
+import { useMemo } from "react";
 
-export const metadata: Metadata = {
-  title: `Daily Challenge - ${BRAND_NAME} | Today's Historical Events`,
-  description: `Play today's daily history challenge with ${BRAND_NAME}. Test your knowledge of events that happened on this date throughout history.`,
+const GamePanelContent = () => {
+  const { gameStatus, currentStreak, bestStreak, month, date, showSavedResult, savedGameData } = useDailyGame();
+  
+  const gameDate = useMemo(() => {
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    return `${monthNames[month - 1]} ${date}`;
+  }, [month, date]);
+
+  return (
+    <div className="w-full h-full">
+      {!showSavedResult && (gameStatus === "lobby" || gameStatus === "loading") && <Lobby useGameContext={useDailyGame} gameMode="daily" />}
+      {!showSavedResult && gameStatus === "ongoing" && <GameInnerPanel useGameContext={useDailyGame} />}
+      {(gameStatus === "finished" || showSavedResult) && (
+        <GameResult 
+          useGameContext={showSavedResult ? undefined : useDailyGame}
+          savedPoints={showSavedResult && savedGameData ? savedGameData.points : undefined}
+          savedEvents={showSavedResult && savedGameData ? savedGameData.events : undefined}
+          savedAnswers={showSavedResult && savedGameData ? savedGameData.answers : undefined}
+          showStreak={true}
+          currentStreak={currentStreak}
+          bestStreak={bestStreak}
+          gameDate={gameDate}
+        />
+      )}
+    </div>
+  );
 };
 
 const DailyPage = () => {
   return (
     <div className="flex justify-center items-center h-full w-full">
       <div className="w-full h-full max-w-[1200px] px-4">
-        <GamePanel />
+        <DailyGameProvider>
+          <GamePanelContent />
+        </DailyGameProvider>
       </div>
     </div>
   );

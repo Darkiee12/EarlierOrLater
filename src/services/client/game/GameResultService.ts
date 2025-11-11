@@ -1,10 +1,10 @@
 import Result from "@/lib/rust_prelude/result";
 
 const DB_NAME = "EventfullyGameDB";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = "dailyGames";
 
-interface DailyGameRecord {
+export interface DailyGameRecord {
   date: number;
   month: number;
   year: number;
@@ -13,6 +13,7 @@ interface DailyGameRecord {
   results: boolean[];
   score: number;
   timestamp: number;
+  events?: string; // JSON string of DetailedEventType[]
 }
 
 interface StreakData {
@@ -226,7 +227,8 @@ export class GameResultService {
 
   static async saveGameResult(
     results: boolean[],
-    score: number
+    score: number,
+    events?: any[] // DetailedEventType[] but we'll serialize it
   ): Promise<Result<StreakData, Error>> {
     const today = this.getTodayDate();
 
@@ -273,6 +275,7 @@ export class GameResultService {
       results,
       score,
       timestamp: Date.now(),
+      events: events ? JSON.stringify(events) : undefined,
     };
 
     const dbResult = await this.getDB();

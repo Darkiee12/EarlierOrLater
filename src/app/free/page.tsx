@@ -1,17 +1,27 @@
-import FreePlayGamePanel from "@/components/game/FreePlayGamePanel";
-import type { Metadata } from "next";
-import { BRAND_NAME } from "@/common/constants";
+"use client";
+import GameResult from "@/components/game/GameResult";
+import { FreePlayGameProvider, useFreePlayGame } from "@/contexts";
+import Lobby from "@/components/game/Lobby";
+import GameInnerPanel from "@/components/game/GameInnerPanel";
 
-export const metadata: Metadata = {
-  title: `Free Play - ${BRAND_NAME} | Practice History Timeline`,
-  description: `Practice your history skills with random events in Free Play mode. Unlimited games with ${BRAND_NAME} to improve your timeline knowledge.`,
+const GamePanelContent = () => {
+  const { gameStatus } = useFreePlayGame();
+  return (
+    <div className="w-full h-full">
+      {(gameStatus === "lobby" || gameStatus === "loading") && <Lobby useGameContext={useFreePlayGame} gameMode="freeplay" />}
+      {gameStatus === "ongoing" && <GameInnerPanel useGameContext={useFreePlayGame} />}
+      {gameStatus === "finished" && <GameResult useGameContext={useFreePlayGame} />}
+    </div>
+  );
 };
 
 const FreePage = () => {
   return (
     <div className="flex justify-center items-center h-full w-full">
       <div className="w-full h-full max-w-[1200px] px-4">
-        <FreePlayGamePanel />
+        <FreePlayGameProvider>
+          <GamePanelContent />
+        </FreePlayGameProvider>
       </div>
     </div>
   );

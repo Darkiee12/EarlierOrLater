@@ -13,12 +13,18 @@ const Lobby = ({ useGameContext, gameMode = "daily" }: LobbyProps) => {
   const isLoading = gameStatus === "loading";
   const [dotCount, setDotCount] = useState(0);
   
-  // Check if already played (only for daily mode)
   const alreadyPlayed = gameMode === "daily" && 'alreadyPlayed' in context 
     ? (context as any).alreadyPlayed 
     : false;
+  
+  const isCheckingPlayedStatus = gameMode === "daily" && 'isCheckingPlayedStatus' in context
+    ? (context as any).isCheckingPlayedStatus
+    : false;
+  
+  const loadSavedResult = gameMode === "daily" && 'loadSavedResult' in context
+    ? (context as any).loadSavedResult
+    : undefined;
 
-  // Animate dots
   useEffect(() => {
     if (!isLoading) return;
     
@@ -54,8 +60,20 @@ const Lobby = ({ useGameContext, gameMode = "daily" }: LobbyProps) => {
         <button
           className="mt-4 px-6 py-3 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           type="button"
-          onClick={() => selectEventType("event")}
-          disabled={isLoading}
+          onClick={async () => {
+            if (isCheckingPlayedStatus) return;
+            
+            if (alreadyPlayed && loadSavedResult) {
+              try {
+                await loadSavedResult();
+              } catch (error) {
+                console.error("Error loading saved result:", error);
+              }
+            } else {
+              selectEventType("event");
+            }
+          }}
+          disabled={isLoading || isCheckingPlayedStatus}
         >
           📜 Historical Events
         </button>
