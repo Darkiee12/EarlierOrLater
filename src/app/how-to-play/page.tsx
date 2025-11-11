@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   description: `Learn how to play ${BRAND_NAME}. Simple rules, scoring system, and tips to improve your historical knowledge and timeline skills.`,
 };
 
+// Force static generation for SEO
+export const dynamic = 'force-static';
+
 export default function HowToPlayPage() {
   return (
     <main className="flex-1 min-h-0 flex flex-col items-center justify-start px-4 py-6 overflow-y-auto">
