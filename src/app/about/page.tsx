@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   description: `Learn about ${BRAND_NAME}, the educational history game that challenges you to guess which events happened first. Discover our mission to make learning history fun.`,
 };
 
+// Force static generation for SEO
+export const dynamic = 'force-static';
+
 export default function AboutPage() {
   return (
     <main className="flex-1 min-h-0 flex flex-col items-center justify-start px-4 py-6 overflow-y-auto">

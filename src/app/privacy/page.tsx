@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   description: `Privacy Policy for ${BRAND_NAME}. Learn how we handle your data and protect your privacy while playing our history game.`,
 };
 
+// Force static generation for SEO
+export const dynamic = 'force-static';
+
 export default function PrivacyPage() {
   return (
     <main className="flex-1 min-h-0 flex flex-col items-center justify-start px-4 py-6 overflow-y-auto">

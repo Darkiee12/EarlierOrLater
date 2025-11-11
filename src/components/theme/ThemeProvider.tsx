@@ -39,9 +39,8 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     }
   }, []);
 
-  // Save theme to localStorage when it changes
   useEffect(() => {
-    if (!mounted) return; // Don't save during SSR
+    if (!mounted) return;
     
     try {
       localStorage.setItem("theme", theme);
@@ -54,9 +53,8 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     body.classList.add(`theme-${theme}`);
   }, [theme, mounted]);
 
-  // Save hearts setting to localStorage when it changes
   useEffect(() => {
-    if (!mounted) return; // Don't save during SSR
+    if (!mounted) return;
     
     try {
       localStorage.setItem("heartsEnabled", heartsEnabled ? "true" : "false");
@@ -65,16 +63,22 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     }
   }, [heartsEnabled, mounted]);
 
-  // Prevent flash of wrong theme by not rendering children until mounted
-  if (!mounted) {
-    return null;
-  }
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      const body = document.body;
+      if (!body.classList.contains("theme-light") && 
+          !body.classList.contains("theme-dark") && 
+          !body.classList.contains("theme-pink")) {
+        body.classList.add("theme-light");
+      }
+    }
+  }, []);
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, heartsEnabled, setHeartsEnabled }}>
       <div>
         {children}
-        {theme === "pink" && heartsEnabled && <HeartOverlay />}
+        {mounted && theme === "pink" && heartsEnabled && <HeartOverlay />}
       </div>
     </ThemeContext.Provider>
   );
