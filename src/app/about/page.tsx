@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BRAND_NAME, BRAND_DESCRIPTION } from "@/common/constants";
+import { BRAND_NAME } from "@/common/constants";
 
 export const metadata: Metadata = {
   title: `About - ${BRAND_NAME} | History Timeline Game`,

@@ -57,11 +57,32 @@ const Carousel: React.FC<PropType> = (props) => {
     onNextButtonClick,
   } = usePrevNextButtons(emblaApi, onNavButtonClick);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+      
+      if ((key === 'a' || key === 'arrowleft') && !prevBtnDisabled) {
+        e.preventDefault();
+        onPrevButtonClick();
+      } else if ((key === 'd' || key === 'arrowright') && !nextBtnDisabled) {
+        e.preventDefault();
+        onNextButtonClick();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [prevBtnDisabled, nextBtnDisabled, onPrevButtonClick, onNextButtonClick]);
+
   return (
     <section className="w-screen sm:max-w-4xl mx-auto">
       <div className="px-2">
          <div className="overflow-hidden" ref={emblaRef}>
-        <div className="flex touch-pan-y touch-pinch-zoom -ml-4">
+        <div className="flex -ml-4">
           {slides.map((event) => (
             <div
               className="min-w-0 pl-4 transform-gpu flex-[0_0_100%]"
@@ -81,7 +102,14 @@ const Carousel: React.FC<PropType> = (props) => {
                         <p className="text-lg font-bold text-center">
                           {event.title}
                         </p>
-                        <div className="overflow-y-auto flex-1">
+                        <div 
+                          className="overflow-y-auto flex-1 touch-pan-y carousel-scrollable-text" 
+                          style={{ 
+                            touchAction: 'pan-y',
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: '#9ca3af #e5e7eb'
+                          }}
+                        >
                           <p>{event.extract}</p>
                         </div>
                       </div>
@@ -130,13 +158,15 @@ const ImageComponent: React.FC<{ source: string, alt: string }> = ({ source, alt
       width={256}
       height={256}
       unoptimized={true}
-      className="object-scale-down w-[256px] h-[256px] py-3"
+      className="object-scale-down py-3"
+      style={{ width: 'auto', height: 'auto', maxWidth: '256px', maxHeight: '256px' }}
     /> : <Image
       src={source}
       alt={alt}
       width={256}
       height={256}
-      className="object-scale-down w-[256px] h-[256px] py-3"
+      className="object-scale-down py-3"
+      style={{ width: 'auto', height: 'auto', maxWidth: '256px', maxHeight: '256px' }}
     />;
 };
 

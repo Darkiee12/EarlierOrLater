@@ -81,6 +81,41 @@ export default function HowToPlayPage() {
           </ul>
         </section>
 
+        <section className="mb-6">
+          <h3 className="text-2xl font-semibold mb-3">Controls & Accessibility</h3>
+          <p className="mb-4">
+            {BRAND_NAME} supports keyboard shortcuts and touch gestures for an accessible gaming experience:
+          </p>
+          
+          <div className="mb-4">
+            <h4 className="text-xl font-semibold mb-2">Keyboard Shortcuts (Game)</h4>
+            <ul className="list-disc pl-6 mb-4 space-y-2">
+              <li><strong>W</strong> or <strong>↑ Arrow Up:</strong> Select the first card</li>
+              <li><strong>S</strong> or <strong>↓ Arrow Down:</strong> Select the second card</li>
+              <li><strong>Space:</strong> Continue to the next pair (when available)</li>
+            </ul>
+          </div>
+
+          <div className="mb-4">
+            <h4 className="text-xl font-semibold mb-2">Keyboard Shortcuts (Carousel)</h4>
+            <ul className="list-disc pl-6 mb-4 space-y-2">
+              <li><strong>A</strong> or <strong>← Left Arrow:</strong> Navigate to previous event</li>
+              <li><strong>D</strong> or <strong>→ Right Arrow:</strong> Navigate to next event</li>
+            </ul>
+          </div>
+
+          <div className="mb-4">
+            <h4 className="text-xl font-semibold mb-2">Mobile Gestures</h4>
+            <ul className="list-disc pl-6 mb-4 space-y-2">
+              <li><strong>Swipe Left</strong> (right to left): Continue to the next pair (when available)</li>
+            </ul>
+          </div>
+
+          <p className="text-sm text-gray-600 dark:text-gray-400 italic">
+            Note: All shortcuts respect disabled states and only work when actions are available.
+          </p>
+        </section>
+
         <div className="mt-8 flex gap-4">
           <Link 
             href="/" 

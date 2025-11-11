@@ -120,3 +120,32 @@ button {
 .animate-slide-up {
     animation: slide-up 2s ease-out forwards;
 }
+
+.carousel-scrollable-text::-webkit-scrollbar {
+    width: 8px;
+}
+
+.carousel-scrollable-text::-webkit-scrollbar-track {
+    background: #e5e7eb;
+}
+
+.carousel-scrollable-text::-webkit-scrollbar-thumb {
+    background: #9ca3af;
+    border-radius: 4px;
+}
+
+.carousel-scrollable-text::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
+
+@media (prefers-color-scheme: dark) {
+    .carousel-scrollable-text::-webkit-scrollbar-track {
+        background: #1f2937;
+    }
+    .carousel-scrollable-text::-webkit-scrollbar-thumb {
+        background: #4b5563;
+    }
+    .carousel-scrollable-text::-webkit-scrollbar-thumb:hover {
+        background: #6b7280;
+    }
+}
