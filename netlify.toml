@@ -28,6 +28,19 @@
   status = 200
   query = {url = ":url", w = ":width", q = ":quality"}
 
+# Redirect old /onthisdate route to /onthisday for SEO and backwards compatibility
+[[redirects]]
+  from = "/onthisdate"
+  to = "/onthisday"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/onthisdate/*"
+  to = "/onthisday/:splat"
+  status = 301
+  force = true
+
 [[headers]]
   for = "/_next/static/*"
   [headers.values]

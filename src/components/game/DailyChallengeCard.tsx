@@ -21,7 +21,7 @@ export const DailyChallengeCard = () => {
 
   return (
     <Link
-      href="/onthisdate"
+      href="/onthisday"
       className="group relative overflow-hidden rounded-2xl border-4 border-blue-500 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 p-8 hover:scale-105 transition-transform duration-200 ease-in-out shadow-lg hover:shadow-xl"
     >
       <div className="flex flex-col items-center justify-center text-center">
