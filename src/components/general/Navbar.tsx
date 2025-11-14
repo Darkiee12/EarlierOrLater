@@ -104,6 +104,40 @@ const Navbar = () => {
                 </Link>
               </li>
               <li>
+                <div className="px-4 py-2 text-xs font-semibold uppercase opacity-60">
+                  Game Modes
+                </div>
+                <ul className="space-y-1 ml-2">
+                  <li>
+                    <Link
+                      href="/onthisday"
+                      onClick={closeSidebar}
+                      className="flex items-center gap-3 px-4 py-2 rounded-lg transition-colors hover:opacity-70"
+                    >
+                      📅 Daily Challenge
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/free/classic"
+                      onClick={closeSidebar}
+                      className="flex items-center gap-3 px-4 py-2 rounded-lg transition-colors hover:opacity-70"
+                    >
+                      🎯 Classic Mode
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/free/time"
+                      onClick={closeSidebar}
+                      className="flex items-center gap-3 px-4 py-2 rounded-lg transition-colors hover:opacity-70"
+                    >
+                      ⏱️ Time Mode
+                    </Link>
+                  </li>
+                </ul>
+              </li>
+              <li>
                 <Link
                   href="/about"
                   onClick={closeSidebar}

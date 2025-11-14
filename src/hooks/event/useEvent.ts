@@ -1,6 +1,6 @@
 
 import { useGet, usePost } from "@/hooks/common";
-import { EventData, EventType } from "@/lib/types/common/database.types";
+import { EventData, EventType, RandomPairEvent } from "@/lib/types/common/database.types";
 import { EventPayload } from "@/lib/types/events/EventPayload";
 import { Pair } from "@/lib/types/common/pair";
 import EventDateImpl from "@/lib/types/events/eventdate";
@@ -58,9 +58,10 @@ const useGetDetailedEvents = (ids: string[], enable: boolean) => {
 }
 
 const useGetRandomEvents = (eventType: EventType, enable = true) => {
-  const queryKey = ["random_events", eventType];
+  const queryKey = ["random_events", eventType, "multiple"];
   const params = new URLSearchParams({
     eventType: eventType,
+    mode: "multiple",
   });
   
   return useGet<string, Pair<EventPayload>[]>(
@@ -72,6 +73,22 @@ const useGetRandomEvents = (eventType: EventType, enable = true) => {
   );
 };
 
+const useGetRandomPair = (eventType: EventType, fetchTrigger: number, enable = true) => {
+  const queryKey = ["random_events", eventType, "single", fetchTrigger.toString()];
+  const params = new URLSearchParams({
+    eventType: eventType,
+    mode: "single",
+  });
+  
+  return useGet<string, RandomPairEvent>(
+    queryKey,
+    {
+      url: `/api/event/random?${params.toString()}`,
+    },
+    enable
+  );
+};
 
-const EventService = { useGetEventPairs, usePostEvent, useGetDetailedEvents, useGetRandomEvents };
+
+const EventService = { useGetEventPairs, usePostEvent, useGetDetailedEvents, useGetRandomEvents, useGetRandomPair };
 export default EventService;

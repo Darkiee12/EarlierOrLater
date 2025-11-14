@@ -16,20 +16,13 @@ import { GameEngine, ScoreCalculator } from "@/lib/game";
 import { useGameTimer } from "@/hooks/game";
 import { DetailedEventType } from "@/lib/types/events/DetailedEvent";
 
-// ============================================================================
-// TYPES & INTERFACES
-// ============================================================================
-
 export type GameStatusType = "loading" | "lobby" | "ongoing" | "finished";
 
 export interface BaseGameContextType {
-  // Game Data
   detailedEvents: Map<string, DetailedEventType>;
   currentPair: Option<Pair<EventPayload>>;
   currentIndex: Option<number>;
   eventType: Option<EventType>;
-
-  // Game State
   gameStatus: GameStatusType;
   points: number;
   answers: Option<boolean>[];
@@ -38,75 +31,25 @@ export interface BaseGameContextType {
   nextGameReady: boolean;
   resultYear: Option<number>;
   resultEventId: Option<string>;
-
-  // Actions
   selectEventType: (eventType: EventType) => void;
   handleCardClick: (selectedId: string) => void;
   nextPair: () => void;
 }
 
-// ============================================================================
-// BASE GAME HOOK
-// ============================================================================
-
-/**
- * Base game logic hook that can be used by both Daily and Free Play modes.
- * 
- * @param events - Option containing pairs of events from API
- * @returns All game state and actions needed for gameplay
- */
 export const useBaseGameLogic = (
-  events: Option<Pair<EventPayload>[]>
+  currentPair: Option<Pair<EventPayload>>,
+  gameStatus: GameStatusType
 ) => {
-  // ---------------------------------------------------------------------------
-  // State - Game Configuration
-  // ---------------------------------------------------------------------------
-  const [eventType, setEventType] = useState<Option<EventType>>(Option.None());
-  const [gameStatus, setGameStatus] = useState<GameStatusType>("lobby");
-
-  // ---------------------------------------------------------------------------
-  // State - Events & Data
-  // ---------------------------------------------------------------------------
-  const [partialEvents, setPartialEvents] = useState<Pair<EventPayload>[]>([]);
-  const [detailedEvents, setDetailedEvents] = useState<
-    Map<string, DetailedEventType>
-  >(new Map());
+  // Events state
+  const [detailedEvents, setDetailedEvents] = useState<Map<string, DetailedEventType>>(new Map());
   const detailedEventsRef = useRef<Map<string, DetailedEventType>>(new Map());
 
-  // ---------------------------------------------------------------------------
-  // State - Game Progress
-  // ---------------------------------------------------------------------------
-  const [current, setCurrent] = useState<Option<number>>(Option.Some(0));
-  const [points, setPoints] = useState<number>(0);
-  const [answers, setAnswers] = useState<Option<boolean>[]>([]);
+  // Selection state
   const [selectedId, setSelectedId] = useState<Option<string>>(Option.None());
   const [earlier, setEarlier] = useState<boolean>(true);
   const [revealReady, setRevealReady] = useState<boolean>(false);
-
-  // ---------------------------------------------------------------------------
-  // Refs
-  // ---------------------------------------------------------------------------
-  const scoredRoundsRef = useRef<Set<number>>(new Set());
-
-  // ---------------------------------------------------------------------------
-  // Hooks - Client-side
-  // ---------------------------------------------------------------------------
+  
   const { startTimers, clearTimers } = useGameTimer();
-
-  // ---------------------------------------------------------------------------
-  // Computed Values
-  // ---------------------------------------------------------------------------
-  const totalRound = useMemo(() => partialEvents.length, [partialEvents]);
-
-  const currentIndex = current.unwrapOr(-1);
-
-  const currentPair: Option<Pair<EventPayload>> = useMemo(
-    () =>
-      currentIndex >= 0 && currentIndex < totalRound
-        ? Option.Some(partialEvents[currentIndex])
-        : Option.None(),
-    [currentIndex, partialEvents, totalRound]
-  );
 
   const requestedEventIds = useMemo(() => {
     return currentPair.map((p) => [p.first.id, p.second.id]).unwrapOr([]);
@@ -114,9 +57,7 @@ export const useBaseGameLogic = (
 
   const hasSelection = useMemo(() => selectedId.isSome(), [selectedId]);
 
-  const currentDetailPair = useMemo<
-    Option<[DetailedEventType, DetailedEventType]>
-  >(() => {
+  const currentDetailPair = useMemo<Option<[DetailedEventType, DetailedEventType]>>(() => {
     return currentPair.match({
       Some: (pair) => {
         return OptionExt.match2({
@@ -146,67 +87,19 @@ export const useBaseGameLogic = (
     });
   }, [currentDetailPair, earlier]);
 
-  // ---------------------------------------------------------------------------
-  // API Hooks (Dependent)
-  // ---------------------------------------------------------------------------
   const { data: fetchedDetailEvents } = EventService.useGetDetailedEvents(
     requestedEventIds,
     hasSelection && requestedEventIds.length > 0
   );
-
-  // ---------------------------------------------------------------------------
-  // Effects - Game Lifecycle
-  // ---------------------------------------------------------------------------
-
-  useEffect(() => {
-    eventType.ifSome(() => {
-      setGameStatus("loading");
-      setPartialEvents([]);
-    });
-  }, [eventType]);
-
-  useEffect(() => {
-    events.ifSomeWithPredicate(
-      (evs) => evs.length > 0 && gameStatus === "loading",
-      (evs) => {
-        setPartialEvents(evs);
-        setAnswers(Array(evs.length).fill(Option.None()));
-        setGameStatus("ongoing");
-        scoredRoundsRef.current = new Set();
-        setRevealReady(false);
-        setEarlier(GameEngine.generateRandomBoolean());
-        clearTimers();
-        setCurrent(Option.Some(0));
-        setPoints(0);
-      }
-    );
-  }, [events, clearTimers, gameStatus]);
-
-  useEffect(() => {
-    current.ifSomeWithPredicate(
-      (idx) =>
-        gameStatus === "ongoing" && GameEngine.isGameFinished(idx, totalRound),
-      () => {
-        setGameStatus("finished");
-        ScoreCalculator.saveBestScore(points);
-        clearTimers();
-      }
-    );
-  }, [current, gameStatus, totalRound, clearTimers, points]);
-
-  // ---------------------------------------------------------------------------
-  // Effects - Data Management
-  // ---------------------------------------------------------------------------
 
   useEffect(() => {
     if (!fetchedDetailEvents) return;
 
     setDetailedEvents((prev) => {
       let changed = false;
-      const newMap: Map<string, DetailedEventType> = new Map(prev);
+      const newMap = new Map(prev);
       for (const ev of fetchedDetailEvents.unwrapOr([])) {
-        const existing = newMap.get(ev.id);
-        if (!existing) {
+        if (!newMap.has(ev.id)) {
           newMap.set(ev.id, ev);
           changed = true;
         }
@@ -217,10 +110,6 @@ export const useBaseGameLogic = (
       return changed ? newMap : prev;
     });
   }, [fetchedDetailEvents]);
-
-  // ---------------------------------------------------------------------------
-  // Effects - Game Timing & Scoring
-  // ---------------------------------------------------------------------------
 
   useEffect(() => {
     if (gameStatus !== "ongoing") {
@@ -237,109 +126,44 @@ export const useBaseGameLogic = (
         setRevealReady(true);
       };
 
-      const handleScore = () => {
-        OptionExt.ifSome2({
-          opt1: selectedId,
-          opt2: current,
-          handlers: (selectedId, current) => {
-            if (GameEngine.canScoreRound(current, scoredRoundsRef.current)) {
-              currentDetailPair.ifSome(([f, s]) => {
-                const isCorrect = ScoreCalculator.isCorrectSelection(
-                  f,
-                  s,
-                  selectedId,
-                  earlier
-                );
-
-                if (isCorrect) {
-                  setPoints((prevPoints) => prevPoints + 1);
-                  setAnswers((prevAnswers) => {
-                    const newAnswers = [...prevAnswers];
-                    newAnswers[current] = Option.Some(true);
-                    return newAnswers;
-                  });
-                } else {
-                  setAnswers((prevAnswers) => {
-                    const newAnswers = [...prevAnswers];
-                    newAnswers[current] = Option.Some(false);
-                    return newAnswers;
-                  });
-                }
-
-                GameEngine.markRoundAsScored(current, scoredRoundsRef.current);
-              });
-            }
-          },
-        });
-      };
-
-      startTimers(delay, handleReveal, handleScore);
+      startTimers(delay, handleReveal, () => {});
     }
 
     return () => {
       clearTimers();
     };
-  }, [
-    selectedId,
-    currentDetailPair,
-    current,
-    gameStatus,
-    earlier,
-    startTimers,
-    clearTimers,
-  ]);
+  }, [selectedId, currentDetailPair, gameStatus, startTimers, clearTimers]);
 
-  // ---------------------------------------------------------------------------
-  // Callbacks - User Actions
-  // ---------------------------------------------------------------------------
-
-  const handleCardClick = useCallback((id: string) => {
-    setSelectedId((prev) => (prev.isSome() ? prev : Option.Some(id)));
-  }, []);
-
-  const selectEventType = useCallback((et: EventType) => {
-    setEventType(Option.Some(et));
-  }, []);
-
-  const nextPair = useCallback(() => {
-    clearTimers();
-
-    // Reset UI state
-    setRevealReady(false);
+  useEffect(() => {
     setSelectedId(Option.None());
-
-    // Move to next round and randomize
-    setCurrent((prev) => prev.map((c) => c + 1));
+    setRevealReady(false);
     setEarlier(GameEngine.generateRandomBoolean());
-  }, [clearTimers]);
-
-  // ---------------------------------------------------------------------------
-  // Update Ref
-  // ---------------------------------------------------------------------------
+  }, [currentPair]);
 
   useEffect(() => {
     detailedEventsRef.current = detailedEvents;
   }, [detailedEvents]);
 
-  // ---------------------------------------------------------------------------
-  // Return Values
-  // ---------------------------------------------------------------------------
+  const handleCardClick = useCallback((id: string) => {
+    setSelectedId((prev) => (prev.isSome() ? prev : Option.Some(id)));
+  }, []);
+
+  const resetForNextPair = useCallback(() => {
+    clearTimers();
+    setRevealReady(false);
+    setSelectedId(Option.None());
+    setEarlier(GameEngine.generateRandomBoolean());
+  }, [clearTimers]);
 
   return {
     detailedEvents: detailedEventsRef.current,
-    currentPair,
-    currentIndex: current,
     selectedId,
-    points,
-    answers,
-    gameStatus,
-    eventType,
-    selectEventType,
-    handleCardClick,
-    nextPair,
+    earlier,
     nextGameReady: revealReady,
     resultYear,
     resultEventId,
-    earlier,
+    currentDetailPair,
+    handleCardClick,
+    resetForNextPair,
   };
 };

@@ -3,3 +3,4 @@ export { default as Lobby } from "@/components/game/Lobby";
 export { default as GameCard } from "@/components/game/GameCard";
 export { default as GameResult } from "@/components/game/GameResult";
 export { default as Carousel } from "@/components/game/Carousel";
+export { default as TimeModeTimer } from "@/components/game/TimeModeTimer";

@@ -3,8 +3,8 @@ import { Pair } from "@/lib/types/common/pair";
 import { PayloadImage, PayloadImageSchema } from "@/lib/types/common";
 
 
-export type EventPayload = Omit<EventData, "original_image" | "thumbnail" | "extract" | "content_urls" | "wiki_metadata" | "created_at" | "updated_at" | "year" > & {
-  original_image: PayloadImage | null, // Serialized to Json for GET requests
+export type EventPayload = Omit<EventData, "original_image" | "thumbnail" | "extract" | "content_urls" | "wiki_metadata" | "created_at" | "updated_at" | "year" | "event_date" > & {
+  original_image: PayloadImage | null, 
   thumbnail: PayloadImage | null,
 };
 export default class EventPayloadImpl {

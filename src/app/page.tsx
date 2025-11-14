@@ -9,12 +9,13 @@ export const revalidate = 86400; // Revalidate once per day
 export default function Home() {
   const structuredData = {
     "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "name": `${BRAND_NAME} - A history timeline game`,
+    "@type": "VideoGame",
+    "name": BRAND_NAME,
     "description": DEFAULT_DESCRIPTION,
     "url": SITE_URL,
-    "applicationCategory": "Game",
     "genre": ["Educational", "Trivia", "History"],
+    "gamePlatform": "Web Browser",
+    "operatingSystem": "Any",
     "browserRequirements": "Requires HTML5.",
     "offers": {
       "@type": "Offer",
@@ -24,6 +25,10 @@ export default function Home() {
     "audience": {
       "@type": "Audience",
       "audienceType": "Students, History Enthusiasts, General Public"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": BRAND_NAME
     }
   };
 
