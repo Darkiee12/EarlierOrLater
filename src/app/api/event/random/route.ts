@@ -5,7 +5,7 @@ import { EventPayload } from "@/lib/types/events/EventPayload";
 import { Pair } from "@/lib/types/common/pair";
 import EventService from "@/services/server/event/EventService";
 import { z } from "zod";
-import { EventType } from "@/lib/types/common/database.types";
+import { EventType, RandomPairEvent } from "@/lib/types/common/database.types";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -13,16 +13,19 @@ export const fetchCache = "force-no-store";
 
 const randomEventQuerySchema = z.object({
   eventType: z.enum(["event", "birth", "death"]).optional(),
+  mode: z.enum(["single", "multiple"]).optional().default("multiple"),
 });
 
 export async function GET(
   request: NextRequest
-): Promise<NextResponse<ApiResult<Pair<EventPayload>[]>>> {
+): Promise<NextResponse<ApiResult<Pair<EventPayload>[] | RandomPairEvent>>> {
   const searchParams = request.nextUrl.searchParams;
   const eventType = searchParams.get("eventType");
+  const mode = searchParams.get("mode");
 
   const validationResult = randomEventQuerySchema.safeParse({
     eventType: eventType || undefined,
+    mode: mode || undefined,
   });
 
   if (!validationResult.success) {
@@ -38,10 +41,12 @@ export async function GET(
     );
   }
 
-  const { eventType: validEventType } = validationResult.data;
+  const { eventType: validEventType, mode: validMode } = validationResult.data;
   const typeToUse: EventType = validEventType || "event";
 
-  const result = await EventService.getRandomEvents(typeToUse);
+  const result = validMode === "single" 
+    ? await EventService.getRandomPair(typeToUse)
+    : await EventService.getRandomEvents(typeToUse);
 
   return result.match({
     Ok: (value) => {

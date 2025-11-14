@@ -19,6 +19,7 @@ export type Database = {
           content_urls: Json
           created_at: string | null
           day: number
+          event_date: string | null
           event_type: Database["events"]["Enums"]["event_type"]
           extract: string
           id: string
@@ -35,6 +36,7 @@ export type Database = {
           content_urls: Json
           created_at?: string | null
           day: number
+          event_date?: string | null
           event_type: Database["events"]["Enums"]["event_type"]
           extract: string
           id?: string
@@ -51,6 +53,7 @@ export type Database = {
           content_urls?: Json
           created_at?: string | null
           day?: number
+          event_date?: string | null
           event_type?: Database["events"]["Enums"]["event_type"]
           extract?: string
           id?: string
@@ -165,6 +168,14 @@ export type Database = {
           year: number
         }[]
       }
+      get_pair_events: {
+        Args: {
+          in_event_type: Database["events"]["Enums"]["event_type"]
+          max_attempts?: number
+          max_years?: number
+        }
+        Returns: Json
+      }
       insert_events: { Args: { p_events: Json }; Returns: undefined }
       random_cluster: {
         Args: {
@@ -200,6 +211,7 @@ export type Database = {
           content_urls: Json
           created_at: string | null
           day: number
+          event_date: string | null
           event_type: Database["events"]["Enums"]["event_type"]
           extract: string
           id: string
@@ -359,3 +371,4 @@ export const Constants = {
 export type InsertEventType = Database["events"]["Tables"]["content"]["Insert"];
 export type EventType = Database["events"]["Enums"]["event_type"];
 export type EventData = Database["events"]["Tables"]["content"]["Row"];
+export type RandomPairEvent = [Pick<EventData, "id" | "text" | "extract" | "title" | "thumbnail" | "original_image" | "event_type">, Pick<EventData, "id" | "text" | "extract" | "title" | "thumbnail" | "original_image" | "event_type">];

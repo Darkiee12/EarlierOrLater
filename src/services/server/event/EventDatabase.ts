@@ -7,6 +7,7 @@ import {
   Database,
   EventData,
   EventType,
+  RandomPairEvent,
 } from "@/lib/types/common/database.types";
 import Option from "@/lib/rust_prelude/option";
 import Result from "@/lib/rust_prelude/result";
@@ -163,6 +164,29 @@ class EventDatabase {
       return Result.Err(error);
     }
     return Result.Ok(count ?? 0);
+  }
+
+  public async getRandomPair(
+    eventType: EventType,
+    maxYearRange?: number,
+    maxAttempts?: number
+  ): Promise<Result<RandomPairEvent, PostgrestError | NotFoundError>> {
+    const { data, error } = await this.supabase.rpc("get_pair_events", {
+      in_event_type: eventType,
+      max_years: maxYearRange,
+      max_attempts: maxAttempts,
+    });
+    if (error) {
+      return Result.Err(error);
+    }
+    if (!data) {
+      return Result.Err(
+        new NotFoundError(
+          `No random pair found for eventType: ${eventType}, maxYearRange: ${maxYearRange}, maxAttempts: ${maxAttempts}`
+        )
+      );
+    }
+    return Result.Ok(data as RandomPairEvent);
   }
 
 }

@@ -1,5 +1,5 @@
 import Result from "@/lib/rust_prelude/result";
-import { EventData, EventType } from "@/lib/types/common/database.types";
+import { EventData, EventType, RandomPairEvent } from "@/lib/types/common/database.types";
 import EventDatabaseInstance, {
   NotFoundError,
   StaleDataError,
@@ -101,10 +101,24 @@ const getEventsByDate = async (
   });
 };
 
+const getRandomPair = async(eventType: EventType): Promise<Result<RandomPairEvent, PostgrestError | NotFoundError>> => {
+  const events = await db.getRandomPair(eventType);
+  return events.match({
+    Ok: (value) => {
+      return Result.Ok(value);
+    },
+    Err: (err) => {
+      console.error(err);
+      return Result.Err(err);
+    },
+  });
+}
+
 const EventService = {
   getRandomEvents,
   getDetailEvents,
   getEventsByDate,
+  getRandomPair,
 };
 
 export default EventService;

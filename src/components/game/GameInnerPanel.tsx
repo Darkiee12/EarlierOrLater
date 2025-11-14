@@ -4,14 +4,15 @@ import Option from "@/lib/rust_prelude/option";
 import { BaseGameContextType } from "@/contexts";
 import DotsProgress from "@/components/general/DotProgress";
 import GameCard from "@/components/game/GameCard";
-import { useCallback, useMemo, useEffect, useRef, useState } from "react";
+import { useCallback, useMemo, useEffect, useRef, useState, memo } from "react";
 import { DetailedEventType } from "@/lib/types/events/DetailedEvent";
 
 interface GameInnerPanelProps {
   useGameContext: () => BaseGameContextType;
 }
 
-const GameInnerPanel: React.FC<GameInnerPanelProps> = ({ useGameContext }) => {
+const GameInnerPanel: React.FC<GameInnerPanelProps> = memo(({ useGameContext }) => {
+  const context = useGameContext();
   const {
     currentPair,
     currentIndex,
@@ -26,7 +27,9 @@ const GameInnerPanel: React.FC<GameInnerPanelProps> = ({ useGameContext }) => {
     selectedId,
     handleCardClick,
     answers,
-  } = useGameContext();
+  } = context;
+
+  const isTimeMode = 'isLoadingNextPair' in context;
 
   const firstEvent = useMemo(
     () => currentPair.map((pair) => pair.first),
@@ -141,10 +144,12 @@ const GameInnerPanel: React.FC<GameInnerPanelProps> = ({ useGameContext }) => {
       {/* Score and Dot Progress - Mobile only, shown above question */}
       <div className="w-full flex-shrink-0 flex-grow-0 flex items-center justify-around py-1 h-[52px] sm:hidden">
         <p className="text-xl font-semibold">Score: {points}</p>
-        <DotsProgress
-          statuses={answers}
-          currentIndex={currentIndex.unwrapOr(0)}
-        />
+        {!isTimeMode && (
+          <DotsProgress
+            statuses={answers}
+            currentIndex={currentIndex.unwrapOr(0)}
+          />
+        )}
       </div>
 
       <div className="flex-shrink-0 flex-grow-0 flex flex-col justify-between items-center mb-4">
@@ -215,10 +220,12 @@ const GameInnerPanel: React.FC<GameInnerPanelProps> = ({ useGameContext }) => {
       {/* Score, Dot Progress, and Continue button - PC only, shown below cards */}
       <div className="w-full flex-shrink-0 flex-grow-0 hidden sm:flex items-center justify-around py-1 h-[52px]">
         <p className="text-xl font-semibold">Score: {points}</p>
-        <DotsProgress
-          statuses={answers}
-          currentIndex={currentIndex.unwrapOr(0)}
-        />
+        {!isTimeMode && (
+          <DotsProgress
+            statuses={answers}
+            currentIndex={currentIndex.unwrapOr(0)}
+          />
+        )}
         <button
           className={`rounded-lg py-1 px-1 border-2 ${
             nextGameReady
@@ -233,7 +240,9 @@ const GameInnerPanel: React.FC<GameInnerPanelProps> = ({ useGameContext }) => {
       </div>
     </div>
   );
-};
+});
+
+GameInnerPanel.displayName = "GameInnerPanel";
 
 export default GameInnerPanel;
 
