@@ -1,6 +1,8 @@
 "use client";
 import EventService from "@/hooks/event/useEvent";
 import { EventType } from "@/lib/types/common/database.types";
+import { EventPayload } from "@/lib/types/events/EventPayload";
+import { Pair } from "@/lib/types/common/pair";
 import EventDateImpl from "@/lib/types/events/eventdate";
 import {
   createContext,
@@ -10,9 +12,12 @@ import {
   useMemo,
   useEffect,
   useCallback,
+  useRef,
 } from "react";
-import { BaseGameContextType, useBaseGameLogic } from "./BaseGameContext";
+import Option from "@/lib/rust_prelude/option";
+import { BaseGameContextType, GameStatusType, useBaseGameLogic } from "./BaseGameContext";
 import GameResultService from "@/services/client/game/GameResultService";
+import { ScoreCalculator } from "@/lib/game";
 
 interface DailyGameContextType extends BaseGameContextType {
   month: number;
@@ -47,20 +52,30 @@ export const useDailyGame = () => {
 };
 
 export const DailyGameProvider = ({ children }: DailyGameProviderProps) => {
-  // Game state
+  // Date state
   const [today] = useState(() => EventDateImpl.fullToday());
+
+  // Game state
   const [eventType, setEventType] = useState<EventType | undefined>(undefined);
+  const [gameStatus, setGameStatus] = useState<GameStatusType>("lobby");
+  const [partialEvents, setPartialEvents] = useState<Pair<EventPayload>[]>([]);
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [points, setPoints] = useState<number>(0);
+  const [answers, setAnswers] = useState<Option<boolean>[]>([]);
+  const scoredRoundsRef = useRef<Set<number>>(new Set());
+
+  // Streak state
   const [currentStreak, setCurrentStreak] = useState(0);
   const [bestStreak, setBestStreak] = useState(0);
   const [alreadyPlayed, setAlreadyPlayed] = useState(false);
   const [isCheckingPlayedStatus, setIsCheckingPlayedStatus] = useState(true);
+
+  // Saved game state
   const [savedGameData, setSavedGameData] = useState<{
     points: number;
     events: any[];
     answers: boolean[];
   } | null>(null);
-  
-  // UI-related state
   const [showSavedResult, setShowSavedResult] = useState(false);
 
   const loadSavedGameData = useCallback(async () => {
@@ -126,25 +141,98 @@ export const DailyGameProvider = ({ children }: DailyGameProviderProps) => {
     eventType !== undefined
   );
 
-  const baseGame = useBaseGameLogic(events);
+  const currentPair: Option<Pair<EventPayload>> = useMemo(
+    () =>
+      currentIndex >= 0 && currentIndex < partialEvents.length
+        ? Option.Some(partialEvents[currentIndex])
+        : Option.None(),
+    [currentIndex, partialEvents]
+  );
 
-  useMemo(() => {
-    baseGame.eventType.ifSome((et) => {
-      if (et !== eventType) {
-        setEventType(et);
-      }
-    });
-  }, [baseGame.eventType, eventType]);
+  const baseGame = useBaseGameLogic(currentPair, gameStatus);
+
+  useEffect(() => {
+    if (gameStatus === "loading" && events) {
+      events.ifSomeWithPredicate(
+        (evs) => evs.length > 0,
+        (evs) => {
+          setPartialEvents(evs);
+          setAnswers(Array(evs.length).fill(Option.None()));
+          setCurrentIndex(0);
+          setPoints(0);
+          scoredRoundsRef.current.clear();
+          setGameStatus("ongoing");
+        }
+      );
+    }
+  }, [events, gameStatus]);
+
+  useEffect(() => {
+    if (gameStatus === "ongoing" && currentIndex >= partialEvents.length && partialEvents.length > 0) {
+      setGameStatus("finished");
+      ScoreCalculator.saveBestScore(points);
+    }
+  }, [currentIndex, partialEvents.length, gameStatus, points]);
+
+  const selectEventType = useCallback((et: EventType) => {
+    setEventType(et);
+    setGameStatus("loading");
+  }, []);
+
+  useEffect(() => {
+    if (
+      gameStatus === "ongoing" &&
+      baseGame.nextGameReady &&
+      baseGame.selectedId.isSome() &&
+      baseGame.currentDetailPair.isSome() &&
+      !scoredRoundsRef.current.has(currentIndex)
+    ) {
+      baseGame.currentDetailPair.ifSome(([firstEvent, secondEvent]) => {
+        baseGame.selectedId.ifSome((selectedId) => {
+          const isCorrect = ScoreCalculator.isCorrectSelection(
+            firstEvent,
+            secondEvent,
+            selectedId,
+            baseGame.earlier
+          );
+
+          if (isCorrect) {
+            setPoints((prev) => prev + 1);
+          }
+
+          setAnswers((prev) => {
+            const newAnswers = [...prev];
+            newAnswers[currentIndex] = Option.Some(isCorrect);
+            return newAnswers;
+          });
+
+          scoredRoundsRef.current.add(currentIndex);
+        });
+      });
+    }
+  }, [
+    gameStatus,
+    baseGame.nextGameReady,
+    baseGame.selectedId,
+    baseGame.currentDetailPair,
+    baseGame.earlier,
+    currentIndex,
+  ]);
+
+  const nextPair = useCallback(() => {
+    baseGame.resetForNextPair();
+    setCurrentIndex((prev) => prev + 1);
+  }, [baseGame]);
 
   useEffect(() => {
     const saveGameResult = async () => {
-      if (baseGame.gameStatus === "finished" && !alreadyPlayed) {
-        const results = baseGame.answers.map((opt) => opt.unwrapOr(false));
+      if (gameStatus === "finished" && !alreadyPlayed) {
+        const results = answers.map((opt) => opt.unwrapOr(false));
         const allEvents = Array.from(baseGame.detailedEvents.values());
 
         const saveResult = await GameResultService.saveGameResult(
           results,
-          baseGame.points,
+          points,
           allEvents
         );
 
@@ -162,7 +250,7 @@ export const DailyGameProvider = ({ children }: DailyGameProviderProps) => {
     };
 
     saveGameResult();
-  }, [baseGame.gameStatus, baseGame.answers, baseGame.points, baseGame.detailedEvents, alreadyPlayed]);
+  }, [gameStatus, answers, points, baseGame.detailedEvents, alreadyPlayed]);
 
   const loadSavedResult = useCallback(async () => {
     if (!alreadyPlayed) return;
@@ -197,7 +285,21 @@ export const DailyGameProvider = ({ children }: DailyGameProviderProps) => {
 
   const value: DailyGameContextType = useMemo(
     () => ({
-      ...baseGame,
+      detailedEvents: baseGame.detailedEvents,
+      currentPair,
+      currentIndex: Option.Some(currentIndex),
+      eventType: Option.into(eventType),
+      gameStatus,
+      points,
+      answers,
+      selectedId: baseGame.selectedId,
+      earlier: baseGame.earlier,
+      nextGameReady: baseGame.nextGameReady,
+      resultYear: baseGame.resultYear,
+      resultEventId: baseGame.resultEventId,
+      selectEventType,
+      handleCardClick: baseGame.handleCardClick,
+      nextPair,
       month: today.month,
       date: today.date,
       currentStreak,
@@ -208,7 +310,32 @@ export const DailyGameProvider = ({ children }: DailyGameProviderProps) => {
       showSavedResult,
       loadSavedResult,
     }),
-    [baseGame, today.month, today.date, currentStreak, bestStreak, alreadyPlayed, isCheckingPlayedStatus, savedGameData, showSavedResult, loadSavedResult]
+    [
+      baseGame.detailedEvents,
+      baseGame.selectedId,
+      baseGame.earlier,
+      baseGame.nextGameReady,
+      baseGame.resultYear,
+      baseGame.resultEventId,
+      baseGame.handleCardClick,
+      currentPair,
+      currentIndex,
+      eventType,
+      gameStatus,
+      points,
+      answers,
+      selectEventType,
+      nextPair,
+      today.month,
+      today.date,
+      currentStreak,
+      bestStreak,
+      alreadyPlayed,
+      isCheckingPlayedStatus,
+      savedGameData,
+      showSavedResult,
+      loadSavedResult,
+    ]
   );
 
   return (

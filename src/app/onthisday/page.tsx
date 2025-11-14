@@ -49,3 +49,4 @@ const DailyPage = () => {
 };
 
 export default DailyPage;
+
